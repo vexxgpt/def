@@ -298,9 +298,9 @@ export function StockList() {
     <div className="space-y-4">
       {/* En Iyi 5 Hisse */}
       {top5Gainers.length > 0 && (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
+        <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-emerald-600">
+            <CardTitle className="flex items-center gap-2 text-primary">
               <Trophy className="h-5 w-5" />
               En Iyi 5 Hisse (Gunluk Yukselis)
             </CardTitle>
@@ -310,17 +310,17 @@ export function StockList() {
               {top5Gainers.map((stock, index) => (
                 <div
                   key={stock.symbol}
-                  className="bg-background rounded-lg p-3 border cursor-pointer hover:border-emerald-500 transition-colors"
+                  className="bg-card rounded-lg p-3 border border-border cursor-pointer hover:border-primary/50 transition-colors"
                   onClick={() => setSelectedStock(stock.symbol)}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg font-bold text-emerald-600">#{index + 1}</span>
-                    <span className="font-semibold">{stock.symbol}</span>
+                    <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                    <span className="font-semibold text-foreground">{stock.symbol}</span>
                   </div>
-                  <div className="text-xl font-bold">
+                  <div className="text-xl font-bold text-foreground">
                     {stock.price.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL
                   </div>
-                  <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                  <div className="flex items-center gap-1 text-primary font-medium">
                     <TrendingUp className="h-4 w-4" />
                     +{stock.changePercent.toFixed(2)}%
                   </div>
@@ -332,13 +332,13 @@ export function StockList() {
       )}
 
       {/* Ana Hisse Listesi */}
-      <Card>
+      <Card className="border-border bg-card">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <TrendingUp className="h-5 w-5 text-primary" />
               BIST Hisseleri
-              <Badge variant="outline">{stocks.length} / {TOTAL_STOCK_COUNT}</Badge>
+              <Badge variant="outline" className="border-border text-muted-foreground">{stocks.length} / {TOTAL_STOCK_COUNT}</Badge>
             </CardTitle>
 
             <div className="flex items-center gap-2">
@@ -350,6 +350,7 @@ export function StockList() {
                   setStocks(data);
                 }}
                 disabled={loading || scanning}
+                className="border-border"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                 Yenile
@@ -359,7 +360,7 @@ export function StockList() {
                 size="sm"
                 onClick={startFullScan}
                 disabled={loading || scanning}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Rocket className={`h-4 w-4 mr-2 ${scanning ? "animate-bounce" : ""}`} />
                 {scanning ? "Taraniyor..." : "Taramayi Baslat"}
@@ -372,18 +373,18 @@ export function StockList() {
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-yellow-500 animate-pulse" />
+                  <Zap className="h-4 w-4 text-primary animate-pulse" />
                   {TOTAL_STOCK_COUNT} hisse taraniyor...
                 </span>
-                <span className="font-medium">{scanProgress}%</span>
+                <span className="font-medium text-primary">{scanProgress}%</span>
               </div>
-              <Progress value={scanProgress} className="h-2" />
+              <Progress value={scanProgress} className="h-2 bg-muted" />
             </div>
           )}
 
           {scanComplete && !scanning && (
-            <div className="mt-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-              <p className="text-sm text-emerald-600 font-medium flex items-center gap-2">
+            <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/30">
+              <p className="text-sm text-primary font-medium flex items-center gap-2">
                 <Trophy className="h-4 w-4" />
                 Tarama tamamlandi! {stocks.length} hisse yuklendi.
               </p>
@@ -514,8 +515,8 @@ export function StockList() {
                         <div
                           className={`flex items-center justify-end gap-1 font-medium ${
                             stock.changePercent >= 0
-                              ? "text-emerald-600"
-                              : "text-red-600"
+                              ? "text-primary"
+                              : "text-destructive"
                           }`}
                         >
                           {stock.changePercent >= 0 ? (
