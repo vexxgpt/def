@@ -1,11 +1,12 @@
 import { AdvancedScanner } from "@/components/advanced-scanner";
+import { ProScanner } from "@/components/pro-scanner";
 import { MarketStatus } from "@/components/market-status";
 import { StockList } from "@/components/stock-list";
 import { PositionTracker } from "@/components/position-tracker";
 import { Watchlist } from "@/components/watchlist";
 import { AlertsPanel } from "@/components/alerts-panel";
 import { StockDetail } from "@/components/stock-detail";
-import { Target, TrendingUp, Zap } from "lucide-react";
+import { Target, TrendingUp, Zap, BarChart3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function HomePage() {
@@ -47,23 +48,42 @@ export default function HomePage() {
         <MarketStatus />
 
         {/* Main Tabs */}
-        <Tabs defaultValue="scanner" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md bg-muted/50 border border-border">
+        <Tabs defaultValue="pro-scanner" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-muted/50 border border-border">
+            <TabsTrigger 
+              value="pro-scanner"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Pro Tarayici
+            </TabsTrigger>
             <TabsTrigger 
               value="scanner"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               <Target className="h-4 w-4 mr-2" />
-              Gelismis Tarayici
+              Basit Tarayici
             </TabsTrigger>
             <TabsTrigger 
               value="market"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               <TrendingUp className="h-4 w-4 mr-2" />
-              Piyasa Goruntule
+              Piyasa
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="pro-scanner" className="mt-6">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+              <div className="xl:col-span-3">
+                <ProScanner />
+              </div>
+              <div className="space-y-6">
+                <AlertsPanel />
+                <Watchlist />
+              </div>
+            </div>
+          </TabsContent>
 
           <TabsContent value="scanner" className="mt-6">
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
