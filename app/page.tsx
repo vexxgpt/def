@@ -1,4 +1,4 @@
-import { AdvancedScanner } from "@/components/advanced-scanner";
+import { ProScanner } from "@/components/pro-scanner";
 import { MarketStatus } from "@/components/market-status";
 import { StockList } from "@/components/stock-list";
 import { PositionTracker } from "@/components/position-tracker";
@@ -68,7 +68,7 @@ export default function HomePage() {
           <TabsContent value="scanner" className="mt-6">
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
               <div className="xl:col-span-3">
-                <AdvancedScanner />
+                <ProScanner />
               </div>
               <div className="space-y-6">
                 <AlertsPanel />
