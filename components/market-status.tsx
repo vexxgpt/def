@@ -7,6 +7,7 @@ import {
   TrendingDown,
   AlertCircle,
   CheckCircle2,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,7 @@ export function MarketStatus() {
       const data = await res.json();
       setStatus(data);
     } catch (error) {
-      console.error("Piyasa durumu alınamadı:", error);
+      console.error("Piyasa durumu alinamadi:", error);
     } finally {
       setLoading(false);
     }
@@ -42,13 +43,13 @@ export function MarketStatus() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); // 30 saniyede bir güncelle
+    const interval = setInterval(fetchStatus, 30000);
     return () => clearInterval(interval);
   }, []);
 
   if (loading) {
     return (
-      <Card className="bg-muted/50">
+      <Card className="border-border bg-card">
         <CardContent className="p-4">
           <div className="animate-pulse flex items-center gap-3">
             <div className="h-10 w-10 bg-muted rounded-full" />
@@ -65,37 +66,37 @@ export function MarketStatus() {
   if (!status) return null;
 
   const isBuyTime = status.message.includes("ALIM ZAMANI");
-  const isSellTime = status.message.includes("SATIŞ TAKİP");
+  const isSellTime = status.message.includes("SATIS TAKIP");
 
   return (
     <Card
       className={`border-2 transition-all ${
         status.isOpen
           ? isBuyTime
-            ? "border-green-500 bg-green-500/10"
+            ? "border-primary bg-primary/10 glow-green-sm"
             : isSellTime
-            ? "border-orange-500 bg-orange-500/10"
-            : "border-emerald-500/50 bg-emerald-500/5"
-          : "border-muted bg-muted/30"
+            ? "border-chart-4 bg-chart-4/10"
+            : "border-primary/50 bg-primary/5"
+          : "border-border bg-card"
       }`}
     >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-full ${
+              className={`p-2.5 rounded-xl ${
                 status.isOpen
                   ? isBuyTime
-                    ? "bg-green-500 text-white"
+                    ? "bg-primary text-primary-foreground glow-green-sm"
                     : isSellTime
-                    ? "bg-orange-500 text-white"
-                    : "bg-emerald-500 text-white"
-                  : "bg-muted-foreground/20 text-muted-foreground"
+                    ? "bg-chart-4 text-background"
+                    : "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               {status.isOpen ? (
                 isBuyTime ? (
-                  <TrendingUp className="h-5 w-5" />
+                  <Zap className="h-5 w-5" />
                 ) : isSellTime ? (
                   <AlertCircle className="h-5 w-5" />
                 ) : (
@@ -107,45 +108,44 @@ export function MarketStatus() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-lg">{status.message}</span>
+                <span className="font-semibold text-lg text-foreground">{status.message}</span>
                 <Badge
-                  variant={status.isOpen ? "default" : "secondary"}
                   className={
                     status.isOpen
                       ? isBuyTime
-                        ? "bg-green-500"
+                        ? "bg-primary text-primary-foreground"
                         : isSellTime
-                        ? "bg-orange-500"
-                        : "bg-emerald-500"
-                      : ""
+                        ? "bg-chart-4 text-background"
+                        : "bg-primary/20 text-primary border-primary/30"
+                      : "bg-muted text-muted-foreground"
                   }
                 >
-                  {status.isOpen ? "AÇIK" : "KAPALI"}
+                  {status.isOpen ? "ACIK" : "KAPALI"}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                {status.currentDate} • {status.currentTime}
+                {status.currentDate} - {status.currentTime}
               </p>
             </div>
           </div>
 
           <div className="text-right">
-            <p className="text-sm font-medium">{status.nextEvent}</p>
-            <p className="text-lg font-bold text-primary">{status.timeUntil}</p>
+            <p className="text-sm font-medium text-muted-foreground">{status.nextEvent}</p>
+            <p className="text-xl font-bold text-primary font-mono">{status.timeUntil}</p>
           </div>
         </div>
 
         {/* Trading Stratejisi Bilgisi */}
-        <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-green-500" />
-            <span className="text-muted-foreground">Alım:</span>
-            <span className="font-medium">{status.tradingStrategy.buyTime}</span>
+        <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Alim:</span>
+            <span className="font-medium text-foreground">{status.tradingStrategy.buyTime}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-orange-500" />
-            <span className="text-muted-foreground">Satış:</span>
-            <span className="font-medium">{status.tradingStrategy.sellCondition}</span>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-chart-4/5 border border-chart-4/20">
+            <TrendingDown className="h-4 w-4 text-chart-4" />
+            <span className="text-muted-foreground">Satis:</span>
+            <span className="font-medium text-foreground">{status.tradingStrategy.sellCondition}</span>
           </div>
         </div>
       </CardContent>

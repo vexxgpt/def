@@ -33,7 +33,7 @@ export function Watchlist() {
         });
       }
     } catch (error) {
-      console.error("İzleme listesi verileri alınamadı:", error);
+      console.error("Izleme listesi verileri alinamadi:", error);
     } finally {
       setLoading(false);
     }
@@ -47,18 +47,18 @@ export function Watchlist() {
 
   if (watchlist.length === 0) {
     return (
-      <Card>
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-yellow-500" />
-            İzleme Listesi
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Star className="h-5 w-5 text-chart-4" />
+            Izleme Listesi
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            <Star className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>İzleme listesi boş</p>
-            <p className="text-sm">Hisse listesinden yıldız simgesine tıklayarak ekleyin</p>
+            <Star className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p>Izleme listesi bos</p>
+            <p className="text-sm">Hisse listesinden yildiz simgesine tiklayarak ekleyin</p>
           </div>
         </CardContent>
       </Card>
@@ -66,19 +66,20 @@ export function Watchlist() {
   }
 
   return (
-    <Card>
+    <Card className="border-border bg-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-            İzleme Listesi
-            <Badge variant="outline">{watchlist.length} hisse</Badge>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Star className="h-5 w-5 text-chart-4 fill-chart-4" />
+            Izleme Listesi
+            <Badge variant="outline" className="border-border text-muted-foreground">{watchlist.length} hisse</Badge>
           </CardTitle>
           <Button
             variant="ghost"
             size="icon"
             onClick={fetchWatchlistData}
             disabled={loading}
+            className="text-muted-foreground hover:text-foreground"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
@@ -90,16 +91,16 @@ export function Watchlist() {
           return (
             <div
               key={item.symbol}
-              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border hover:border-primary/30 transition-colors cursor-pointer"
               onClick={() => setSelectedStock(item.symbol)}
             >
               <div className="flex items-center gap-3">
-                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                <Star className="h-4 w-4 text-chart-4 fill-chart-4" />
                 <div>
-                  <span className="font-semibold">{item.symbol}</span>
+                  <span className="font-semibold text-foreground">{item.symbol}</span>
                   {stockData && (
                     <p className="text-sm text-muted-foreground">
-                      {stockData.price.toFixed(2)} ₺
+                      {stockData.price.toFixed(2)} TL
                     </p>
                   )}
                 </div>
@@ -110,8 +111,8 @@ export function Watchlist() {
                   <div
                     className={`flex items-center gap-1 text-sm font-medium ${
                       stockData.changePercent >= 0
-                        ? "text-emerald-600"
-                        : "text-red-600"
+                        ? "text-primary"
+                        : "text-destructive"
                     }`}
                   >
                     {stockData.changePercent >= 0 ? (
@@ -128,7 +129,7 @@ export function Watchlist() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedStock(item.symbol);
@@ -139,13 +140,13 @@ export function Watchlist() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       removeFromWatchlist(item.symbol);
                     }}
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
