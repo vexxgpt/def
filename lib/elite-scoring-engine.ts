@@ -904,18 +904,18 @@ export function calculateSignalStrength(r: EliteScanResult): {
   else oscNeutral++;
   
   // CCI
-  if (r.indicators.cci.current < -100) oscBuy++;
-  else if (r.indicators.cci.current > 100) oscSell++;
+  if (r.indicators.cci < -100) oscBuy++;
+  else if (r.indicators.cci > 100) oscSell++;
   else oscNeutral++;
   
   // Williams %R
-  if (r.indicators.williamsR.current < -80) oscBuy++;
-  else if (r.indicators.williamsR.current > -20) oscSell++;
+  if (r.indicators.williamsR < -80) oscBuy++;
+  else if (r.indicators.williamsR > -20) oscSell++;
   else oscNeutral++;
   
   // MFI
-  if (r.indicators.mfi.current < 20) oscBuy++;
-  else if (r.indicators.mfi.current > 80) oscSell++;
+  if (r.indicators.mfi < 20) oscBuy++;
+  else if (r.indicators.mfi > 80) oscSell++;
   else oscNeutral++;
   
   // MACD
@@ -924,8 +924,8 @@ export function calculateSignalStrength(r: EliteScanResult): {
   else oscNeutral++;
   
   // ADX
-  if (r.indicators.adx.plusDI > r.indicators.adx.minusDI && r.indicators.adx.current > 20) oscBuy++;
-  else if (r.indicators.adx.minusDI > r.indicators.adx.plusDI && r.indicators.adx.current > 20) oscSell++;
+  if (r.indicators.adx.plusDI > r.indicators.adx.minusDI && r.indicators.adx.value > 20) oscBuy++;
+  else if (r.indicators.adx.minusDI > r.indicators.adx.plusDI && r.indicators.adx.value > 20) oscSell++;
   else oscNeutral++;
   
   // Hareketli Ortalamalar
@@ -945,10 +945,10 @@ export function calculateSignalStrength(r: EliteScanResult): {
   if (price > r.indicators.sma.sma200) maBuy++; else maSell++;
   
   // Ichimoku
-  if (r.indicators.ichimoku.cloudSignal === 'strong_bullish') maBuy += 2;
-  else if (r.indicators.ichimoku.cloudSignal === 'bullish') maBuy++;
-  else if (r.indicators.ichimoku.cloudSignal === 'strong_bearish') maSell += 2;
-  else if (r.indicators.ichimoku.cloudSignal === 'bearish') maSell++;
+  if (r.indicators.ichimoku.signal === 'strong_buy') maBuy += 2;
+  else if (r.indicators.ichimoku.signal === 'buy') maBuy++;
+  else if (r.indicators.ichimoku.signal === 'strong_sell') maSell += 2;
+  else if (r.indicators.ichimoku.signal === 'sell') maSell++;
   else maNeutral++;
   
   // Toplam
