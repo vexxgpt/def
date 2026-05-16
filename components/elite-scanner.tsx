@@ -33,6 +33,8 @@ import {
   Gauge,
   Eye,
   Scale,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,7 @@ import { calculateEliteIndicators } from "@/lib/elite-indicators";
 import { analyzeEliteSignals } from "@/lib/elite-signal-engine";
 import { generateEliteScanResult, sortEliteResults, filterEliteResults, filterUltraEliteResults, calculateCompositeScore, calculateSignalStrength } from "@/lib/elite-scoring-engine";
 import type { EliteScanResult, ScanProgress, HistoricalDataResponse } from "@/lib/elite-scanner-types";
+import { OvernightPanel, UltraEliteBadge, MorningGreenScore } from "@/components/overnight-panel";
 
 const BATCH_SIZE = 8;
 
@@ -659,6 +662,10 @@ export function EliteScanner() {
                         <TabsTrigger value="technicals" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
                           <LineChart className="h-4 w-4 mr-2" />
                           Teknik
+                        </TabsTrigger>
+                        <TabsTrigger value="overnight" className="rounded-none border-b-2 border-transparent data-[state=active]:border-chart-4 data-[state=active]:bg-transparent">
+                          <Moon className="h-4 w-4 mr-2" />
+                          Overnight
                         </TabsTrigger>
                       </TabsList>
 
@@ -1312,6 +1319,109 @@ export function EliteScanner() {
                             </div>
                           </div>
                         </div>
+                      </TabsContent>
+
+                      {/* Overnight Tab */}
+                      <TabsContent value="overnight" className="p-6 space-y-6">
+                        <OvernightPanel result={selectedResult} />
+                        
+                        {/* Morning Green Score */}
+                        {selectedResult.morningGreen && (
+                          <div className="p-4 rounded-xl bg-gradient-to-br from-chart-4/5 to-primary/5 border border-chart-4/30">
+                            <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                              <Sun className="h-5 w-5 text-chart-4" />
+                              Sabah Yesil Analizi
+                              {selectedResult.morningGreen.morningGreenScore >= 70 && (
+                                <Badge variant="outline" className="text-xs bg-primary/20 text-primary border-primary/30">
+                                  YUKSEK POTANSIYEL
+                                </Badge>
+                              )}
+                            </h4>
+                            <MorningGreenScore 
+                              score={selectedResult.morningGreen.morningGreenScore}
+                              rate5d={selectedResult.morningGreen.stats.greenMorningRate5d}
+                              rate10d={selectedResult.morningGreen.stats.greenMorningRate10d}
+                              rate20d={selectedResult.morningGreen.stats.greenMorningRate20d}
+                            />
+                            
+                            {/* Strategy Recommendation */}
+                            <div className="mt-4 p-3 rounded-lg bg-background border border-border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">Strateji Onerisi</span>
+                                <Badge variant="outline" className={`text-xs ${
+                                  selectedResult.morningGreen.strategy.recommendation === 'STRONG_MORNING_BUY'
+                                    ? 'bg-primary/20 text-primary border-primary/30'
+                                    : selectedResult.morningGreen.strategy.recommendation === 'MORNING_BUY'
+                                    ? 'bg-chart-2/20 text-chart-2 border-chart-2/30'
+                                    : selectedResult.morningGreen.strategy.recommendation === 'WAIT_FOR_DIP'
+                                    ? 'bg-chart-4/20 text-chart-4 border-chart-4/30'
+                                    : selectedResult.morningGreen.strategy.recommendation === 'AVOID_MORNING'
+                                    ? 'bg-destructive/20 text-destructive border-destructive/30'
+                                    : 'bg-muted text-muted-foreground border-border'
+                                }`}>
+                                  {selectedResult.morningGreen.strategy.recommendation.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Guven: %{selectedResult.morningGreen.strategy.confidence}
+                              </p>
+                              <ul className="mt-2 space-y-1">
+                                {selectedResult.morningGreen.strategy.reasoning.slice(0, 3).map((reason, i) => (
+                                  <li key={i} className="text-xs text-foreground flex items-start gap-2">
+                                    <CheckCircle2 className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                                    {reason}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            
+                            {/* Pattern Info */}
+                            <div className="mt-4 grid grid-cols-3 gap-3">
+                              <div className="p-2 rounded bg-muted/50 text-center">
+                                <div className="text-xs text-muted-foreground">Ust Uste Yesil</div>
+                                <div className="text-lg font-bold text-primary">
+                                  {selectedResult.morningGreen.patterns.consecutiveGreenMornings}
+                                </div>
+                              </div>
+                              <div className="p-2 rounded bg-muted/50 text-center">
+                                <div className="text-xs text-muted-foreground">Hot Streak</div>
+                                <div className={`text-lg font-bold ${selectedResult.morningGreen.patterns.isHotStreak ? 'text-primary' : 'text-muted-foreground'}`}>
+                                  {selectedResult.morningGreen.patterns.isHotStreak ? 'EVET' : 'HAYIR'}
+                                </div>
+                              </div>
+                              <div className="p-2 rounded bg-muted/50 text-center">
+                                <div className="text-xs text-muted-foreground">Hacim Trendi</div>
+                                <div className={`text-lg font-bold ${
+                                  selectedResult.morningGreen.patterns.volumeTrend === 'increasing' ? 'text-primary' :
+                                  selectedResult.morningGreen.patterns.volumeTrend === 'decreasing' ? 'text-destructive' :
+                                  'text-muted-foreground'
+                                }`}>
+                                  {selectedResult.morningGreen.patterns.volumeTrend === 'increasing' ? 'ARTAN' :
+                                   selectedResult.morningGreen.patterns.volumeTrend === 'decreasing' ? 'AZALAN' : 'STABIL'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Ultra Elite Badge */}
+                        {selectedResult.ultraEliteScore && selectedResult.ultraEliteScore >= 60 && (
+                          <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 via-chart-2/10 to-chart-4/10 border border-primary/30">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Sparkles className="h-6 w-6 text-primary" />
+                                <div>
+                                  <h4 className="font-semibold text-foreground">Ultra-Elite Firsat</h4>
+                                  <p className="text-xs text-muted-foreground">Tum kriterler karsilandi</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-3xl font-bold text-primary">{selectedResult.ultraEliteScore}</div>
+                                <div className="text-xs text-muted-foreground">/ 100</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </TabsContent>
                     </Tabs>
                   </CardContent>
