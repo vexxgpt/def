@@ -358,6 +358,16 @@ export interface EliteScanResult {
   // Meta
   lastUpdated: Date;
   dataQuality: 'excellent' | 'good' | 'fair' | 'poor';
+  
+  // Pro Skorlama (TradingView tarzinda)
+  compositeScore?: number; // 0-100
+  signalStrength?: {
+    strength: number;
+    label: 'GUCLU AL' | 'AL' | 'NOTR' | 'SAT' | 'GUCLU SAT';
+    oscillators: { buy: number; neutral: number; sell: number };
+    movingAverages: { buy: number; neutral: number; sell: number };
+    summary: { buy: number; neutral: number; sell: number };
+  };
 }
 
 export interface ScanProgress {

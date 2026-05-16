@@ -46,7 +46,7 @@ import { BIST_STOCKS, TOTAL_STOCK_COUNT } from "@/lib/bist-stocks";
 import { useTradingStore } from "@/lib/store";
 import { calculateEliteIndicators } from "@/lib/elite-indicators";
 import { analyzeEliteSignals } from "@/lib/elite-signal-engine";
-import { generateEliteScanResult, sortEliteResults, filterEliteResults, filterUltraEliteResults } from "@/lib/elite-scoring-engine";
+import { generateEliteScanResult, sortEliteResults, filterEliteResults, filterUltraEliteResults, calculateCompositeScore, calculateSignalStrength } from "@/lib/elite-scoring-engine";
 import type { EliteScanResult, ScanProgress, HistoricalDataResponse } from "@/lib/elite-scanner-types";
 
 const BATCH_SIZE = 8;
@@ -514,8 +514,29 @@ export function EliteScanner() {
                               </Badge>
                             </div>
                             
-                            {/* Pro Analysis Summary */}
-                            {stock.decision.proAnalysis && (
+                            {/* Pro Analysis Summary - TradingView Style */}
+                            {stock.signalStrength && (
+                              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                <Badge variant="outline" className={`text-xs px-2 py-0.5 font-semibold ${
+                                  stock.signalStrength.label === 'GUCLU AL' 
+                                    ? 'bg-primary/20 text-primary border-primary/40' 
+                                    : stock.signalStrength.label === 'AL'
+                                    ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                    : stock.signalStrength.label === 'NOTR'
+                                    ? 'bg-chart-4/20 text-chart-4 border-chart-4/40'
+                                    : 'bg-destructive/20 text-destructive border-destructive/40'
+                                }`}>
+                                  {stock.signalStrength.label}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Skor: <span className="font-semibold text-foreground">{stock.compositeScore}</span>/100
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({stock.signalStrength.summary.buy}A/{stock.signalStrength.summary.neutral}N/{stock.signalStrength.summary.sell}S)
+                                </span>
+                              </div>
+                            )}
+                            {!stock.signalStrength && stock.decision.proAnalysis && (
                               <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                                 <Badge variant="outline" className="text-xs px-1.5 py-0 bg-amber-500/10 text-amber-500 border-amber-500/30">
                                   Giris: {stock.decision.proAnalysis.entryQuality}
@@ -701,6 +722,135 @@ export function EliteScanner() {
                             </div>
                           ))}
                         </div>
+
+                        {/* TRADINGVIEW STYLE SIGNAL STRENGTH GAUGE */}
+                        {selectedResult.signalStrength && (
+                          <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-chart-2/5 border border-primary/20">
+                            <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                              <Activity className="h-5 w-5 text-primary" />
+                              Sinyal Gucu Analizi
+                              <Badge variant="outline" className={`text-xs font-bold ${
+                                selectedResult.signalStrength.label === 'GUCLU AL' 
+                                  ? 'bg-primary/20 text-primary border-primary/40' 
+                                  : selectedResult.signalStrength.label === 'AL'
+                                  ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                  : selectedResult.signalStrength.label === 'NOTR'
+                                  ? 'bg-chart-4/20 text-chart-4 border-chart-4/40'
+                                  : 'bg-destructive/20 text-destructive border-destructive/40'
+                              }`}>
+                                {selectedResult.signalStrength.label}
+                              </Badge>
+                            </h4>
+                            
+                            {/* Kompozit Skor */}
+                            <div className="mb-6 p-4 rounded-lg bg-background/50 border border-border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-muted-foreground">Kompozit Skor</span>
+                                <span className={`text-3xl font-bold ${
+                                  (selectedResult.compositeScore || 0) >= 70 ? 'text-primary' :
+                                  (selectedResult.compositeScore || 0) >= 50 ? 'text-chart-2' :
+                                  (selectedResult.compositeScore || 0) >= 35 ? 'text-chart-4' : 'text-destructive'
+                                }`}>
+                                  {selectedResult.compositeScore || 0}/100
+                                </span>
+                              </div>
+                              <Progress value={selectedResult.compositeScore || 0} className="h-3" />
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Osilatorler */}
+                              <div className="p-3 rounded-lg bg-background/50 border border-border">
+                                <div className="text-sm font-medium text-muted-foreground mb-3">Osilatorler</div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-primary"></div>
+                                    <span className="text-xs">Al</span>
+                                    <span className="font-semibold text-primary">{selectedResult.signalStrength.oscillators.buy}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-chart-4"></div>
+                                    <span className="text-xs">Notr</span>
+                                    <span className="font-semibold text-chart-4">{selectedResult.signalStrength.oscillators.neutral}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-destructive"></div>
+                                    <span className="text-xs">Sat</span>
+                                    <span className="font-semibold text-destructive">{selectedResult.signalStrength.oscillators.sell}</span>
+                                  </div>
+                                </div>
+                                <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+                                  <div 
+                                    className="bg-primary transition-all" 
+                                    style={{ width: `${(selectedResult.signalStrength.oscillators.buy / (selectedResult.signalStrength.oscillators.buy + selectedResult.signalStrength.oscillators.neutral + selectedResult.signalStrength.oscillators.sell)) * 100}%` }}
+                                  />
+                                  <div 
+                                    className="bg-chart-4 transition-all" 
+                                    style={{ width: `${(selectedResult.signalStrength.oscillators.neutral / (selectedResult.signalStrength.oscillators.buy + selectedResult.signalStrength.oscillators.neutral + selectedResult.signalStrength.oscillators.sell)) * 100}%` }}
+                                  />
+                                  <div 
+                                    className="bg-destructive transition-all" 
+                                    style={{ width: `${(selectedResult.signalStrength.oscillators.sell / (selectedResult.signalStrength.oscillators.buy + selectedResult.signalStrength.oscillators.neutral + selectedResult.signalStrength.oscillators.sell)) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Hareketli Ortalamalar */}
+                              <div className="p-3 rounded-lg bg-background/50 border border-border">
+                                <div className="text-sm font-medium text-muted-foreground mb-3">Hareketli Ortalamalar</div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-primary"></div>
+                                    <span className="text-xs">Al</span>
+                                    <span className="font-semibold text-primary">{selectedResult.signalStrength.movingAverages.buy}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-chart-4"></div>
+                                    <span className="text-xs">Notr</span>
+                                    <span className="font-semibold text-chart-4">{selectedResult.signalStrength.movingAverages.neutral}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-destructive"></div>
+                                    <span className="text-xs">Sat</span>
+                                    <span className="font-semibold text-destructive">{selectedResult.signalStrength.movingAverages.sell}</span>
+                                  </div>
+                                </div>
+                                <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+                                  <div 
+                                    className="bg-primary transition-all" 
+                                    style={{ width: `${(selectedResult.signalStrength.movingAverages.buy / (selectedResult.signalStrength.movingAverages.buy + selectedResult.signalStrength.movingAverages.neutral + selectedResult.signalStrength.movingAverages.sell)) * 100}%` }}
+                                  />
+                                  <div 
+                                    className="bg-chart-4 transition-all" 
+                                    style={{ width: `${(selectedResult.signalStrength.movingAverages.neutral / (selectedResult.signalStrength.movingAverages.buy + selectedResult.signalStrength.movingAverages.neutral + selectedResult.signalStrength.movingAverages.sell)) * 100}%` }}
+                                  />
+                                  <div 
+                                    className="bg-destructive transition-all" 
+                                    style={{ width: `${(selectedResult.signalStrength.movingAverages.sell / (selectedResult.signalStrength.movingAverages.buy + selectedResult.signalStrength.movingAverages.neutral + selectedResult.signalStrength.movingAverages.sell)) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Toplam Ozet */}
+                            <div className="mt-4 p-3 rounded-lg bg-background border border-primary/20">
+                              <div className="text-sm font-medium text-center mb-2">Toplam Teknik Sinyal</div>
+                              <div className="flex items-center justify-center gap-6">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-primary">{selectedResult.signalStrength.summary.buy}</div>
+                                  <div className="text-xs text-muted-foreground">Al</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-chart-4">{selectedResult.signalStrength.summary.neutral}</div>
+                                  <div className="text-xs text-muted-foreground">Notr</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-destructive">{selectedResult.signalStrength.summary.sell}</div>
+                                  <div className="text-xs text-muted-foreground">Sat</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* PRO ANALYSIS - YENİ BÖLÜM */}
                         {selectedResult.decision.proAnalysis && (

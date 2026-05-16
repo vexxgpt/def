@@ -796,67 +796,239 @@ export function sortEliteResults(results: EliteScanResult[]): EliteScanResult[] 
   });
 }
 
+// ==========================================
+// PROFESYONEL SKORLAMA SISTEMI
+// TradingView, Finviz, ThinkOrSwim tarzinda
+// ==========================================
+
+// Her hisse icin kompozit skor hesapla (0-100)
+export function calculateCompositeScore(r: EliteScanResult): number {
+  let score = 0;
+  
+  // 1. TEKNIK SKOR (max 25 puan)
+  score += Math.min(25, r.score.technical * 0.25);
+  
+  // 2. MOMENTUM SKORU (max 20 puan)
+  score += Math.min(20, r.score.momentum * 0.20);
+  
+  // 3. TREND SKORU (max 20 puan)
+  score += Math.min(20, r.score.trend * 0.20);
+  
+  // 4. HACIM SKORU (max 15 puan)
+  const volumeBonus = r.volume.ratio >= 2 ? 15 : r.volume.ratio >= 1.5 ? 12 : r.volume.ratio >= 1 ? 9 : r.volume.ratio * 9;
+  score += volumeBonus;
+  
+  // 5. SINYAL GUCU (max 20 puan)
+  const netSignals = r.signalSummary.strongBuyCount * 2 + r.signalSummary.buyCount - 
+                     r.signalSummary.strongSellCount * 2 - r.signalSummary.sellCount;
+  const signalScore = Math.max(0, Math.min(20, (netSignals + 5) * 2));
+  score += signalScore;
+  
+  // BONUS PUANLAR
+  // Bullish EMA alignment
+  if (r.indicators.ema.alignment === 'perfect_bullish') score += 5;
+  else if (r.indicators.ema.alignment === 'bullish') score += 3;
+  
+  // Guclu ADX trendi
+  if (r.indicators.adx.trend === 'strong_up') score += 4;
+  else if (r.indicators.adx.trend === 'up') score += 2;
+  
+  // Bullish MACD
+  if (r.indicators.macd.histogram > 0 && r.indicators.macd.crossover === 'bullish') score += 4;
+  
+  // Ideal RSI bolgesi (40-60)
+  if (r.indicators.rsi.current >= 40 && r.indicators.rsi.current <= 60) score += 3;
+  
+  // Bullish divergence bonus
+  if (r.indicators.rsi.divergence === 'bullish' || r.indicators.macd.divergence === 'bullish') score += 5;
+  
+  // CEZA PUANLARI
+  // Bearish divergence
+  if (r.indicators.rsi.divergence === 'bearish' || r.indicators.macd.divergence === 'bearish') score -= 10;
+  
+  // Asiri alim/satim
+  if (r.indicators.rsi.current > 75) score -= 8;
+  if (r.indicators.rsi.current < 25) score -= 5;
+  
+  // Yuksek risk
+  if (r.risk.level === 'extreme') score -= 20;
+  else if (r.risk.level === 'very_high') score -= 12;
+  else if (r.risk.level === 'high') score -= 6;
+  
+  // Deal breaker
+  if (r.risk.dealBreakers.length > 0) score -= 25;
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Sinyal Gucu Hesaplama (TradingView tarzinda)
+export function calculateSignalStrength(r: EliteScanResult): {
+  strength: number; // 0-100
+  label: 'GUCLU AL' | 'AL' | 'NOTR' | 'SAT' | 'GUCLU SAT';
+  oscillators: { buy: number; neutral: number; sell: number };
+  movingAverages: { buy: number; neutral: number; sell: number };
+  summary: { buy: number; neutral: number; sell: number };
+} {
+  // Osilatorler
+  let oscBuy = 0, oscNeutral = 0, oscSell = 0;
+  
+  // RSI
+  if (r.indicators.rsi.current < 30) oscBuy++;
+  else if (r.indicators.rsi.current > 70) oscSell++;
+  else oscNeutral++;
+  
+  // Stochastic
+  if (r.indicators.stochastic.k < 20) oscBuy++;
+  else if (r.indicators.stochastic.k > 80) oscSell++;
+  else oscNeutral++;
+  
+  // CCI
+  if (r.indicators.cci.current < -100) oscBuy++;
+  else if (r.indicators.cci.current > 100) oscSell++;
+  else oscNeutral++;
+  
+  // Williams %R
+  if (r.indicators.williamsR.current < -80) oscBuy++;
+  else if (r.indicators.williamsR.current > -20) oscSell++;
+  else oscNeutral++;
+  
+  // MFI
+  if (r.indicators.mfi.current < 20) oscBuy++;
+  else if (r.indicators.mfi.current > 80) oscSell++;
+  else oscNeutral++;
+  
+  // MACD
+  if (r.indicators.macd.histogram > 0 && r.indicators.macd.crossover === 'bullish') oscBuy++;
+  else if (r.indicators.macd.histogram < 0 && r.indicators.macd.crossover === 'bearish') oscSell++;
+  else oscNeutral++;
+  
+  // ADX
+  if (r.indicators.adx.plusDI > r.indicators.adx.minusDI && r.indicators.adx.current > 20) oscBuy++;
+  else if (r.indicators.adx.minusDI > r.indicators.adx.plusDI && r.indicators.adx.current > 20) oscSell++;
+  else oscNeutral++;
+  
+  // Hareketli Ortalamalar
+  let maBuy = 0, maNeutral = 0, maSell = 0;
+  const price = r.price.current;
+  
+  // EMA'lar
+  if (price > r.indicators.ema.ema8) maBuy++; else maSell++;
+  if (price > r.indicators.ema.ema21) maBuy++; else maSell++;
+  if (price > r.indicators.ema.ema55) maBuy++; else maSell++;
+  if (price > r.indicators.ema.ema200) maBuy++; else maSell++;
+  
+  // SMA'lar
+  if (price > r.indicators.sma.sma20) maBuy++; else maSell++;
+  if (price > r.indicators.sma.sma50) maBuy++; else maSell++;
+  if (price > r.indicators.sma.sma100) maBuy++; else maSell++;
+  if (price > r.indicators.sma.sma200) maBuy++; else maSell++;
+  
+  // Ichimoku
+  if (r.indicators.ichimoku.cloudSignal === 'strong_bullish') maBuy += 2;
+  else if (r.indicators.ichimoku.cloudSignal === 'bullish') maBuy++;
+  else if (r.indicators.ichimoku.cloudSignal === 'strong_bearish') maSell += 2;
+  else if (r.indicators.ichimoku.cloudSignal === 'bearish') maSell++;
+  else maNeutral++;
+  
+  // Toplam
+  const totalBuy = oscBuy + maBuy;
+  const totalNeutral = oscNeutral + maNeutral;
+  const totalSell = oscSell + maSell;
+  const total = totalBuy + totalNeutral + totalSell;
+  
+  // Strength hesapla (-100 to +100, sonra 0-100'e cevir)
+  const rawStrength = ((totalBuy - totalSell) / total) * 100;
+  const strength = Math.round((rawStrength + 100) / 2);
+  
+  // Label belirle
+  let label: 'GUCLU AL' | 'AL' | 'NOTR' | 'SAT' | 'GUCLU SAT';
+  if (strength >= 75) label = 'GUCLU AL';
+  else if (strength >= 55) label = 'AL';
+  else if (strength >= 45) label = 'NOTR';
+  else if (strength >= 25) label = 'SAT';
+  else label = 'GUCLU SAT';
+  
+  return {
+    strength,
+    label,
+    oscillators: { buy: oscBuy, neutral: oscNeutral, sell: oscSell },
+    movingAverages: { buy: maBuy, neutral: maNeutral, sell: maSell },
+    summary: { buy: totalBuy, neutral: totalNeutral, sell: totalSell },
+  };
+}
+
+// Finviz tarzinda filtreleme
 export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[] {
   return results.filter(r => {
     // Deal breaker olanlar disinda
     if (r.risk.dealBreakers.length > 0) return false;
     
-    // SADECE STRONG_BUY ve BUY
-    if (r.decision.action !== 'STRONG_BUY' && r.decision.action !== 'BUY') return false;
+    // AVOID ve SELL disinda
+    if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
     
-    // Minimum grade A veya B+
-    if (r.score.grade !== 'A+' && r.score.grade !== 'A' && r.score.grade !== 'B+') return false;
+    // Minimum grade C (F ve D disinda)
+    if (r.score.grade === 'F' || r.score.grade === 'D') return false;
     
-    // Minimum conviction %85 - PROFESYONEL ESIK
-    if (r.decision.conviction < 85) return false;
+    // Minimum conviction %55
+    if (r.decision.conviction < 55) return false;
     
-    // Minimum overall skor %65
-    if (r.score.overall < 65) return false;
+    // Risk extreme olmamali
+    if (r.risk.level === 'extreme') return false;
     
-    // Sadece dusuk ve cok dusuk risk
-    if (r.risk.level !== 'low' && r.risk.level !== 'very_low') return false;
-    
-    // Minimum 5 alim sinyali
+    // En az 2 alim sinyali
     const totalBuySignals = r.signalSummary.strongBuyCount + r.signalSummary.buyCount;
-    if (totalBuySignals < 5) return false;
-    
-    // Risk/Reward en az 1.5
-    if (r.target.riskRewardRatios.conservative < 1.5) return false;
-    
-    // Minimum %0.8 gunluk hacim/fiyat orani (likidite)
-    if (r.volume.ratio < 0.8) return false;
+    if (totalBuySignals < 2) return false;
     
     return true;
   });
 }
 
-// Ultra-Elite filtreleme - TOP 5 icin
+// Pro Trader filtreleme - TOP 5 icin (kademeli)
 export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
-  const baseFiltered = filterEliteResults(results);
+  // Tum sonuclara kompozit skor ekle
+  const scoredResults = results.map(r => ({
+    ...r,
+    compositeScore: calculateCompositeScore(r),
+    signalStrength: calculateSignalStrength(r),
+  }));
   
-  // Ek ultra-elite kriterler
-  return baseFiltered.filter(r => {
-    // Minimum 2 STRONG_BUY kategoride sinyal
-    const strongBuyCategories = new Set<string>();
-    for (const signal of r.signals) {
-      if (signal.type === 'strong_buy') {
-        strongBuyCategories.add(signal.category);
-      }
-    }
-    if (strongBuyCategories.size < 2) return false;
+  // Kompozit skora gore sirala
+  scoredResults.sort((a, b) => b.compositeScore - a.compositeScore);
+  
+  // Minimum kriterler (daha gevşek)
+  const filtered = scoredResults.filter(r => {
+    // Deal breaker yok
+    if (r.risk.dealBreakers.length > 0) return false;
     
-    // EMA alignment pozitif olmali
-    if (r.indicators.ema.alignment !== 'perfect_bullish' && r.indicators.ema.alignment !== 'bullish') return false;
+    // AVOID ve SELL disinda
+    if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
     
-    // ADX trend yukari olmali
-    if (r.indicators.adx.trend !== 'strong_up' && r.indicators.adx.trend !== 'up') return false;
+    // Minimum kompozit skor 45
+    if (r.compositeScore < 45) return false;
     
-    // RSI 30-65 arasi (ne asiri alim ne asiri satim)
-    if (r.indicators.rsi.current < 30 || r.indicators.rsi.current > 65) return false;
+    // Sinyal gucu NOTR veya ustu (strength >= 45)
+    if (r.signalStrength.strength < 45) return false;
     
-    // Bearish diverjans OLMAMALI
-    if (r.indicators.rsi.divergence === 'bearish' || r.indicators.macd.divergence === 'bearish') return false;
+    // Risk extreme veya very_high olmamali
+    if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
+    
+    // En az 1 buy kategorisinde sinyal
+    if (r.signalSummary.strongBuyCount + r.signalSummary.buyCount < 1) return false;
     
     return true;
-  }).slice(0, 5); // Sadece TOP 5
+  });
+  
+  // Eger yeterli sonuc yoksa, kriterleri gevset
+  if (filtered.length < 5) {
+    const relaxedFiltered = scoredResults.filter(r => {
+      if (r.risk.dealBreakers.length > 0) return false;
+      if (r.decision.action === 'AVOID') return false;
+      if (r.compositeScore < 35) return false;
+      if (r.risk.level === 'extreme') return false;
+      return true;
+    });
+    return relaxedFiltered.slice(0, 5);
+  }
+  
+  return filtered.slice(0, 5);
 }
