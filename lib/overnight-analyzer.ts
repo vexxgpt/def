@@ -724,15 +724,17 @@ function generateOvernightStrategy(
     reasoning.push('Belirsiz kosullar, bekle ve izle');
   }
   
+  const optimalTiming = eveningAction === 'BUY_BEFORE_CLOSE' 
+    ? '17:30-17:45 arasi' 
+    : (morningAction as string) === 'BUY_AT_OPEN'
+      ? '09:30 acilisinda'
+      : 'Sabah 10:00\'a kadar izle';
+  
   return {
     eveningAction,
     morningAction,
     reasoning,
-    optimalTiming: eveningAction === 'BUY_BEFORE_CLOSE' 
-      ? '17:30-17:45 arasi' 
-      : morningAction === 'BUY_AT_OPEN'
-        ? '09:30 acilisinda'
-        : 'Sabah 10:00\'a kadar izle',
+    optimalTiming,
   };
 }
 
