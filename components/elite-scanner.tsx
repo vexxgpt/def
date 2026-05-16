@@ -35,6 +35,8 @@ import {
   Scale,
   Moon,
   Sun,
+  Bot,
+  Brain,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,8 +72,67 @@ export function EliteScanner() {
   const [selectedResult, setSelectedResult] = useState<EliteScanResult | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [scanComplete, setScanComplete] = useState(false);
+  
+  // AI Analiz State
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<{
+    analyses: Array<{
+      symbol: string;
+      morningGreenProbability: number;
+      overnightRisk: string;
+      recommendation: string;
+      reasoning: string;
+      keyFactors: string[];
+    }>;
+    ranking: string[];
+    topPick: {
+      symbol: string;
+      confidence: number;
+      reasoning: string;
+    };
+    marketOutlook: string;
+    disclaimer: string;
+  } | null>(null);
 
   const { addAlert } = useTradingStore();
+
+  // AI Elite Analiz fonksiyonu
+  const runAiAnalysis = useCallback(async () => {
+    if (topResults.length === 0) return;
+    
+    setAiAnalyzing(true);
+    setAiAnalysis(null);
+    
+    try {
+      const res = await fetch('/api/ai/elite-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stocks: topResults }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success && data.analysis) {
+        setAiAnalysis(data.analysis);
+        addAlert({
+          symbol: "AI-ANALIZ",
+          type: "bilgi",
+          message: `Groq AI analizi tamamlandi. Top Pick: ${data.analysis.topPick?.symbol || 'N/A'}`,
+        });
+      } else {
+        throw new Error(data.error || 'AI analiz hatasi');
+      }
+    } catch (error) {
+      console.error('AI Analiz hatasi:', error);
+      addAlert({
+        symbol: "AI-ANALIZ",
+        type: "hata",
+        message: "AI analizi yapilamadi",
+      });
+    } finally {
+      setAiAnalyzing(false);
+    }
+  }, [topResults, addAlert]);
 
   const startEliteScan = useCallback(async () => {
     setScanning(true);
@@ -352,6 +413,29 @@ export function EliteScanner() {
                     </>
                   )}
                 </Button>
+                
+                {/* AI Analiz Butonu */}
+                {scanComplete && topResults.length > 0 && (
+                  <Button
+                    size="lg"
+                    onClick={runAiAnalysis}
+                    disabled={aiAnalyzing}
+                    variant="outline"
+                    className="border-chart-4 text-chart-4 hover:bg-chart-4/10"
+                  >
+                    {aiAnalyzing ? (
+                      <>
+                        <Brain className="h-5 w-5 mr-2 animate-pulse" />
+                        AI Analiz Yapiliyor...
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="h-5 w-5 mr-2" />
+                        Groq AI Analiz
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -441,7 +525,141 @@ export function EliteScanner() {
 
         {/* Results Grid */}
         {topResults.length > 0 && (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="space-y-6">
+            {/* AI Analiz Sonuclari Paneli */}
+            {aiAnalysis && (
+              <Card className="border-chart-4/50 bg-gradient-to-br from-chart-4/5 to-transparent">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-chart-4/20">
+                      <Brain className="h-5 w-5 text-chart-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span>Groq AI Elite Analizi</span>
+                        <Badge variant="outline" className="text-xs bg-chart-4/10 text-chart-4 border-chart-4/30">
+                          SABAH YESIL TAHMINI
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground font-normal mt-0.5">
+                        Mark Minervini & William O'Neil metodolojisi ile overnight gap analizi
+                      </p>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Top Pick */}
+                  {aiAnalysis.topPick && (
+                    <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <span className="font-semibold text-primary">AI TOP PICK - AKSAM AL</span>
+                        <Badge className="bg-primary text-primary-foreground">
+                          {aiAnalysis.topPick.symbol}
+                        </Badge>
+                        <Badge variant="outline" className="ml-auto">
+                          Guven: %{aiAnalysis.topPick.confidence}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-foreground">{aiAnalysis.topPick.reasoning}</p>
+                    </div>
+                  )}
+                  
+                  {/* AI Siralama */}
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    {aiAnalysis.analyses.map((analysis, idx) => {
+                      const rankIndex = aiAnalysis.ranking.indexOf(analysis.symbol);
+                      const isTopPick = analysis.symbol === aiAnalysis.topPick?.symbol;
+                      
+                      return (
+                        <div 
+                          key={analysis.symbol}
+                          className={`p-3 rounded-xl border ${
+                            isTopPick 
+                              ? 'bg-primary/10 border-primary/40' 
+                              : analysis.recommendation === 'AKSAM_AL'
+                              ? 'bg-chart-2/10 border-chart-2/30'
+                              : analysis.recommendation === 'UZAK_DUR'
+                              ? 'bg-destructive/10 border-destructive/30'
+                              : 'bg-muted/50 border-border'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                rankIndex === 0 ? 'bg-primary text-primary-foreground' :
+                                rankIndex === 1 ? 'bg-chart-2 text-white' :
+                                rankIndex === 2 ? 'bg-chart-4 text-white' :
+                                'bg-muted text-muted-foreground'
+                              }`}>
+                                {rankIndex + 1}
+                              </span>
+                              <span className="font-bold">{analysis.symbol}</span>
+                            </div>
+                            {isTopPick && <Sparkles className="h-4 w-4 text-primary" />}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Sabah Yesil</span>
+                              <span className={`text-sm font-bold ${
+                                analysis.morningGreenProbability >= 70 ? 'text-primary' :
+                                analysis.morningGreenProbability >= 50 ? 'text-chart-4' :
+                                'text-destructive'
+                              }`}>
+                                %{analysis.morningGreenProbability}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Gece Riski</span>
+                              <Badge variant="outline" className={`text-xs ${
+                                analysis.overnightRisk === 'dusuk' ? 'text-primary border-primary/30' :
+                                analysis.overnightRisk === 'orta' ? 'text-chart-4 border-chart-4/30' :
+                                'text-destructive border-destructive/30'
+                              }`}>
+                                {analysis.overnightRisk}
+                              </Badge>
+                            </div>
+                            
+                            <Badge className={`w-full justify-center ${
+                              analysis.recommendation === 'AKSAM_AL' ? 'bg-primary hover:bg-primary' :
+                              analysis.recommendation === 'BEKLE' ? 'bg-chart-4 hover:bg-chart-4' :
+                              'bg-destructive hover:bg-destructive'
+                            }`}>
+                              {analysis.recommendation.replace('_', ' ')}
+                            </Badge>
+                            
+                            <p className="text-xs text-muted-foreground line-clamp-2">{analysis.reasoning}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Market Outlook */}
+                  {aiAnalysis.marketOutlook && (
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground">Piyasa Gorunumu: </span>
+                          <span className="text-xs text-foreground">{aiAnalysis.marketOutlook}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Disclaimer */}
+                  <p className="text-xs text-muted-foreground text-center">
+                    {aiAnalysis.disclaimer || "Bu bir yatirim tavsiyesi degildir, sadece teknik analizdir."}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Top Results Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Top Results List */}
             <div className="xl:col-span-1 space-y-3">
               <div className="flex items-center gap-3">
@@ -455,7 +673,12 @@ export function EliteScanner() {
               </div>
               <ScrollArea className="h-[700px]">
                 <div className="space-y-2 pr-4">
-                  {topResults.map((stock, index) => (
+                  {topResults.map((stock, index) => {
+                    // AI analizinden bu hisse icin veri al
+                    const aiStockAnalysis = aiAnalysis?.analyses.find(a => a.symbol === stock.symbol);
+                    const aiRank = aiAnalysis?.ranking.indexOf(stock.symbol);
+                    
+                    return (
                     <Card
                       key={stock.symbol}
                       className={`cursor-pointer transition-all hover:border-primary/50 ${
@@ -474,7 +697,19 @@ export function EliteScanner() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-semibold text-foreground">{stock.symbol}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-foreground">{stock.symbol}</span>
+                                {aiStockAnalysis && (
+                                  <Badge variant="outline" className={`text-xs ${
+                                    aiStockAnalysis.recommendation === 'AKSAM_AL' ? 'bg-primary/20 text-primary border-primary/30' :
+                                    aiStockAnalysis.recommendation === 'BEKLE' ? 'bg-chart-4/20 text-chart-4 border-chart-4/30' :
+                                    'bg-destructive/20 text-destructive border-destructive/30'
+                                  }`}>
+                                    <Bot className="h-3 w-3 mr-1" />
+                                    {aiRank !== undefined && aiRank !== -1 ? `#${aiRank + 1}` : ''} %{aiStockAnalysis.morningGreenProbability}
+                                  </Badge>
+                                )}
+                              </div>
                               <Badge variant="outline" className={`text-xs ${getActionColor(stock.decision.action)}`}>
                                 {getActionIcon(stock.decision.action)}
                                 <span className="ml-1">{stock.decision.action.replace('_', ' ')}</span>
@@ -620,7 +855,8 @@ export function EliteScanner() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
