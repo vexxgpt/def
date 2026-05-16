@@ -511,6 +511,33 @@ export interface EliteScanResult {
   
   // SMART MONEY AKTIVITESI
   smartMoney?: SmartMoneyActivity;
+  
+  // OVERNIGHT ANALIZI (Yeni)
+  overnightAnalysis?: {
+    weeklyScore: number;
+    eveningGreenSuccessRate: number;
+    eveningRedRecoveryRate: number;
+    overallMorningGreenRate: number;
+    patternConsistency: number;
+    confidenceLevel: 'very_high' | 'high' | 'medium' | 'low' | 'very_low';
+    prediction: {
+      nextMorningDirection: 'green' | 'red' | 'uncertain';
+      probability: number;
+      expectedGap: number;
+    };
+    overnightRisk: {
+      score: number;
+      recommendation: 'HOLD_OVERNIGHT' | 'CAUTION' | 'EXIT_BEFORE_CLOSE';
+    };
+    strategy: {
+      eveningAction: 'BUY_BEFORE_CLOSE' | 'HOLD' | 'SELL_BEFORE_CLOSE' | 'WAIT';
+      morningAction: 'BUY_AT_OPEN' | 'BUY_ON_DIP' | 'WAIT_AND_SEE' | 'SELL_AT_OPEN';
+    };
+  };
+  
+  // ULTRA-ELITE SKORU (Yeni)
+  ultraEliteScore?: number;
+  isUltraElite?: boolean;
 }
 
 export interface ScanProgress {
