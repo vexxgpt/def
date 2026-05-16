@@ -807,6 +807,7 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
   
   // PRO TRADER KRITERLERI - DUNYA STANDARTLARI
   let proTraderCriteria: ProTraderCriteria | undefined;
+  
   if (bars.length >= 50) {
     proTraderCriteria = calculateProTraderCriteria(
       bars,
@@ -815,6 +816,7 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
       input.fiftyTwoWeekLow,
       0 // Market change - ileride BIST100 verisi eklenebilir
     );
+  }
     
     // Ultra-Elite skoru pro kriterlerle guncelle
     if (ultraEliteScore !== undefined && proTraderCriteria) {

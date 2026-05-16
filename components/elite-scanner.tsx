@@ -118,7 +118,7 @@ export function EliteScanner() {
         const res = await fetch('/api/stocks/historical', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ symbols: batch, days: 60 }), // 60 gun veri
+          body: JSON.stringify({ symbols: batch, days: 365 }), // 365 gun (52 hafta) - Pro Trader kriterleri icin gerekli
         });
 
         const data = await res.json();
@@ -131,7 +131,7 @@ export function EliteScanner() {
           }));
 
           for (const stockData of data.data as HistoricalDataResponse[]) {
-            if (stockData.bars && stockData.bars.length >= 30) {
+            if (stockData.bars && stockData.bars.length >= 50) { // Pro Trader kriterleri icin minimum 50 bar gerekli
               try {
                 // Elite teknik indikatorler
                 const indicators = calculateEliteIndicators(stockData.bars);
