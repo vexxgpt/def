@@ -689,6 +689,10 @@ export function EliteScanner() {
                           <Moon className="h-4 w-4 mr-2" />
                           Overnight
                         </TabsTrigger>
+                        <TabsTrigger value="pro" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Pro Trader
+                        </TabsTrigger>
                       </TabsList>
 
                       {/* Overview Tab */}
@@ -1442,6 +1446,356 @@ export function EliteScanner() {
                                 <div className="text-xs text-muted-foreground">/ 100</div>
                               </div>
                             </div>
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      {/* Pro Trader Kriterleri Tab */}
+                      <TabsContent value="pro" className="p-6 space-y-6">
+                        {selectedResult.proTraderCriteria ? (
+                          <>
+                            {/* Pro Signal Badge */}
+                            <div className={`p-4 rounded-xl border ${
+                              selectedResult.proTraderCriteria.proSignal === 'STRONG_BUY_TONIGHT'
+                                ? 'bg-primary/20 border-primary/40'
+                                : selectedResult.proTraderCriteria.proSignal === 'BUY_TONIGHT'
+                                ? 'bg-chart-2/20 border-chart-2/40'
+                                : selectedResult.proTraderCriteria.proSignal === 'WATCH'
+                                ? 'bg-chart-4/20 border-chart-4/40'
+                                : selectedResult.proTraderCriteria.proSignal === 'AVOID'
+                                ? 'bg-destructive/20 border-destructive/40'
+                                : 'bg-muted/20 border-muted/40'
+                            }`}>
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <Sparkles className={`h-6 w-6 ${
+                                    selectedResult.proTraderCriteria.proSignal === 'STRONG_BUY_TONIGHT' ? 'text-primary' :
+                                    selectedResult.proTraderCriteria.proSignal === 'BUY_TONIGHT' ? 'text-chart-2' :
+                                    selectedResult.proTraderCriteria.proSignal === 'WATCH' ? 'text-chart-4' :
+                                    'text-destructive'
+                                  }`} />
+                                  <div>
+                                    <h4 className="font-semibold text-foreground">Pro Trader Sinyali</h4>
+                                    <p className="text-xs text-muted-foreground">Dunya standartlari kriterlerine gore</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <Badge variant="outline" className={`text-lg font-bold ${
+                                    selectedResult.proTraderCriteria.proSignal === 'STRONG_BUY_TONIGHT'
+                                      ? 'bg-primary/20 text-primary border-primary/40'
+                                      : selectedResult.proTraderCriteria.proSignal === 'BUY_TONIGHT'
+                                      ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                      : selectedResult.proTraderCriteria.proSignal === 'WATCH'
+                                      ? 'bg-chart-4/20 text-chart-4 border-chart-4/40'
+                                      : 'bg-destructive/20 text-destructive border-destructive/40'
+                                  }`}>
+                                    {selectedResult.proTraderCriteria.proSignal.replace(/_/g, ' ')}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <ul className="space-y-1">
+                                {selectedResult.proTraderCriteria.proReasons.slice(0, 4).map((reason, idx) => (
+                                  <li key={idx} className="text-sm text-foreground flex items-start gap-2">
+                                    <span className="text-primary mt-1">•</span>
+                                    {reason}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Pro Score Gauge */}
+                            <div className="p-4 rounded-xl bg-card border border-border">
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <h4 className="font-semibold text-foreground">Pro Trader Skoru</h4>
+                                  <p className="text-xs text-muted-foreground">Mark Minervini, William O'Neil metodolojisi</p>
+                                </div>
+                                <div className="text-right">
+                                  <div className={`text-4xl font-bold ${
+                                    selectedResult.proTraderCriteria.proScore >= 80 ? 'text-primary' :
+                                    selectedResult.proTraderCriteria.proScore >= 60 ? 'text-chart-2' :
+                                    'text-chart-4'
+                                  }`}>
+                                    {selectedResult.proTraderCriteria.proScore}
+                                  </div>
+                                  <div className={`text-xl font-bold ${
+                                    selectedResult.proTraderCriteria.proGrade === 'A+' || selectedResult.proTraderCriteria.proGrade === 'A' ? 'text-primary' :
+                                    selectedResult.proTraderCriteria.proGrade === 'B+' || selectedResult.proTraderCriteria.proGrade === 'B' ? 'text-chart-2' :
+                                    selectedResult.proTraderCriteria.proGrade === 'C' ? 'text-chart-4' :
+                                    'text-destructive'
+                                  }`}>
+                                    Grade: {selectedResult.proTraderCriteria.proGrade}
+                                  </div>
+                                </div>
+                              </div>
+                              <Progress value={selectedResult.proTraderCriteria.proScore} className="h-3" />
+                            </div>
+
+                            {/* Minervini Template */}
+                            <div className={`p-4 rounded-xl border ${
+                              selectedResult.proTraderCriteria.minerviniTemplate.passed
+                                ? 'bg-primary/10 border-primary/30'
+                                : 'bg-muted/50 border-border'
+                            }`}>
+                              <h4 className={`font-semibold mb-3 ${selectedResult.proTraderCriteria.minerviniTemplate.passed ? 'text-primary' : 'text-foreground'}`}>
+                                Mark Minervini Trend Template
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div className="flex items-center gap-2">
+                                  {selectedResult.proTraderCriteria.minerviniTemplate.criteria.above150SMA ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className="text-sm">{'Fiyat > 150 SMA'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {selectedResult.proTraderCriteria.minerviniTemplate.criteria.above200SMA ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className="text-sm">{'Fiyat > 200 SMA'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {selectedResult.proTraderCriteria.minerviniTemplate.criteria.sma150Above200 ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className="text-sm">{'150 SMA > 200 SMA'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {selectedResult.proTraderCriteria.minerviniTemplate.criteria.priceAbove30PercentFrom52Low ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className="text-sm">52 haftadan %30+ yukarda</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {selectedResult.proTraderCriteria.minerviniTemplate.criteria.priceWithin25PercentOf52High ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className="text-sm">52 hafta tepesinden %25 uzakta</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {selectedResult.proTraderCriteria.minerviniTemplate.criteria.rsRatingAbove70 ? (
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                  )}
+                                  <span className="text-sm">{'RS Rating > 70'}</span>
+                                </div>
+                              </div>
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">Template Skoru</span>
+                                  <div className="flex items-center gap-2">
+                                    <Progress value={selectedResult.proTraderCriteria.minerviniTemplate.score} className="h-2 w-24" />
+                                    <span className="text-sm font-medium">{selectedResult.proTraderCriteria.minerviniTemplate.score}/100</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Kurumsal Birikim */}
+                            <div className={`p-4 rounded-xl border ${
+                              selectedResult.proTraderCriteria.institutionalAccumulation.signal.includes('accumulation')
+                                ? 'bg-primary/10 border-primary/30'
+                                : selectedResult.proTraderCriteria.institutionalAccumulation.signal.includes('distribution')
+                                ? 'bg-destructive/10 border-destructive/30'
+                                : 'bg-muted/50 border-border'
+                            }`}>
+                              <h4 className={`font-semibold mb-3 ${
+                                selectedResult.proTraderCriteria.institutionalAccumulation.signal.includes('accumulation')
+                                  ? 'text-primary'
+                                  : selectedResult.proTraderCriteria.institutionalAccumulation.signal.includes('distribution')
+                                  ? 'text-destructive'
+                                  : 'text-foreground'
+                              }`}>
+                                Kurumsal Birikim Analizi
+                              </h4>
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Sinyal</span>
+                                  <Badge variant="outline" className={
+                                    selectedResult.proTraderCriteria.institutionalAccumulation.signal === 'strong_accumulation'
+                                      ? 'bg-primary/20 text-primary border-primary/30'
+                                      : selectedResult.proTraderCriteria.institutionalAccumulation.signal === 'accumulation'
+                                      ? 'bg-chart-2/20 text-chart-2 border-chart-2/30'
+                                      : selectedResult.proTraderCriteria.institutionalAccumulation.signal === 'distribution'
+                                      ? 'bg-destructive/20 text-destructive border-destructive/30'
+                                      : 'bg-muted'
+                                  }>
+                                    {selectedResult.proTraderCriteria.institutionalAccumulation.signal.replace(/_/g, ' ')}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="p-2 rounded bg-muted/50">
+                                    <div className="text-xs text-muted-foreground">Yuksek Hacim Gunler</div>
+                                    <div className="text-lg font-bold">{selectedResult.proTraderCriteria.institutionalAccumulation.indicators.volumeClimaxDays}</div>
+                                  </div>
+                                  <div className="p-2 rounded bg-muted/50">
+                                    <div className="text-xs text-muted-foreground">Yukselis Hacim Orani</div>
+                                    <div className="text-lg font-bold">{(selectedResult.proTraderCriteria.institutionalAccumulation.indicators.upVolumeRatio * 100).toFixed(0)}%</div>
+                                  </div>
+                                  <div className="p-2 rounded bg-muted/50">
+                                    <div className="text-xs text-muted-foreground">Fiyat-Hacim Uyumu</div>
+                                    <div className={selectedResult.proTraderCriteria.institutionalAccumulation.indicators.priceVolumeConvergence ? 'text-lg font-bold text-primary' : 'text-lg font-bold text-destructive'}>
+                                      {selectedResult.proTraderCriteria.institutionalAccumulation.indicators.priceVolumeConvergence ? 'EVET' : 'HAYIR'}
+                                    </div>
+                                  </div>
+                                  <div className="p-2 rounded bg-muted/50">
+                                    <div className="text-xs text-muted-foreground">Olagan Disii Hacim</div>
+                                    <div className="text-lg font-bold">{selectedResult.proTraderCriteria.institutionalAccumulation.indicators.unusualVolumeSpikes}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* VCP Pattern */}
+                            {selectedResult.proTraderCriteria.vcpPattern.detected && (
+                              <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
+                                <h4 className="font-semibold text-primary mb-3">VCP - Volatility Contraction Pattern</h4>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm">Daralmalar</span>
+                                    <span className="text-sm font-bold">{selectedResult.proTraderCriteria.vcpPattern.contractions}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm">Sikisiklik Skoru</span>
+                                    <span className="text-sm font-bold">{selectedResult.proTraderCriteria.vcpPattern.tightnessScore}/100</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm">Breakout Potansiyeli</span>
+                                    <span className="text-sm font-bold text-primary">{selectedResult.proTraderCriteria.vcpPattern.breakoutPotential}/100</span>
+                                  </div>
+                                  {selectedResult.proTraderCriteria.vcpPattern.pivotPrice && (
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm">Kirilim Noktasi</span>
+                                      <span className="text-sm font-bold">{formatTL(selectedResult.proTraderCriteria.vcpPattern.pivotPrice)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Relative Strength */}
+                            <div className="p-4 rounded-xl bg-card border border-border">
+                              <h4 className="font-semibold text-foreground mb-3">Relative Strength (IBD Tarzi)</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="p-2 rounded bg-muted/50">
+                                  <div className="text-xs text-muted-foreground">52 Hafta RS</div>
+                                  <div className="text-lg font-bold text-primary">{selectedResult.proTraderCriteria.relativeStrength.rs52Week}</div>
+                                </div>
+                                <div className="p-2 rounded bg-muted/50">
+                                  <div className="text-xs text-muted-foreground">13 Hafta RS</div>
+                                  <div className="text-lg font-bold text-primary">{selectedResult.proTraderCriteria.relativeStrength.rs13Week}</div>
+                                </div>
+                                <div className="p-2 rounded bg-muted/50">
+                                  <div className="text-xs text-muted-foreground">4 Hafta RS</div>
+                                  <div className="text-lg font-bold text-primary">{selectedResult.proTraderCriteria.relativeStrength.rs4Week}</div>
+                                </div>
+                                <div className="p-2 rounded bg-muted/50">
+                                  <div className="text-xs text-muted-foreground">RS Rating</div>
+                                  <div className={`text-lg font-bold ${selectedResult.proTraderCriteria.relativeStrength.rsRating >= 80 ? 'text-primary' : 'text-chart-4'}`}>
+                                    {selectedResult.proTraderCriteria.relativeStrength.rsRating}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Market'ten Daha Iyi</span>
+                                  <Badge variant="outline" className={selectedResult.proTraderCriteria.relativeStrength.outperformingMarket ? 'bg-primary/20 text-primary border-primary/30' : 'bg-destructive/20 text-destructive border-destructive/30'}>
+                                    {selectedResult.proTraderCriteria.relativeStrength.outperformingMarket ? 'EVET' : 'HAYIR'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Gap Analysis */}
+                            <div className="p-4 rounded-xl bg-card border border-border">
+                              <h4 className="font-semibold text-foreground mb-3">Gap Analizi</h4>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Gap Tipi</span>
+                                  <Badge variant="outline">{selectedResult.proTraderCriteria.gapAnalysisPro.gapType.replace(/_/g, ' ')}</Badge>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Fill Olasiligi</span>
+                                  <span className="text-sm font-bold">%{selectedResult.proTraderCriteria.gapAnalysisPro.gapFillProbability}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Ortalama Gap Buyuklugu</span>
+                                  <span className="text-sm font-bold">{selectedResult.proTraderCriteria.gapAnalysisPro.averageGapSize.toFixed(2)}%</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Basari Orani</span>
+                                  <span className="text-sm font-bold text-primary">%{selectedResult.proTraderCriteria.gapAnalysisPro.gapSuccessRate}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Smart Money Flow */}
+                            <div className={`p-4 rounded-xl border ${
+                              selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity === 'buying'
+                                ? 'bg-primary/10 border-primary/30'
+                                : selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity === 'selling'
+                                ? 'bg-destructive/10 border-destructive/30'
+                                : 'bg-muted/50 border-border'
+                            }`}>
+                              <h4 className={`font-semibold mb-3 ${
+                                selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity === 'buying' ? 'text-primary' :
+                                selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity === 'selling' ? 'text-destructive' :
+                                'text-foreground'
+                              }`}>
+                                Smart Money Flow
+                              </h4>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Buyuk Oyuncu Aktivitesi</span>
+                                  <Badge variant="outline" className={
+                                    selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity === 'buying'
+                                      ? 'bg-primary/20 text-primary border-primary/30'
+                                      : selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity === 'selling'
+                                      ? 'bg-destructive/20 text-destructive border-destructive/30'
+                                      : 'bg-muted'
+                                  }>
+                                    {selectedResult.proTraderCriteria.smartMoneyFlow.bigPlayerActivity}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">OBV Trend</span>
+                                  <Badge variant="outline" className={
+                                    selectedResult.proTraderCriteria.smartMoneyFlow.onBalanceVolumeTrend === 'rising'
+                                      ? 'bg-primary/20 text-primary border-primary/30'
+                                      : selectedResult.proTraderCriteria.smartMoneyFlow.onBalanceVolumeTrend === 'falling'
+                                      ? 'bg-destructive/20 text-destructive border-destructive/30'
+                                      : 'bg-muted'
+                                  }>
+                                    {selectedResult.proTraderCriteria.smartMoneyFlow.onBalanceVolumeTrend}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">A/D Trend</span>
+                                  <span className="text-sm font-bold">{selectedResult.proTraderCriteria.smartMoneyFlow.accumulationDistribution.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Flow Skor</span>
+                                  <span className={`text-sm font-bold ${selectedResult.proTraderCriteria.smartMoneyFlow.flowScore > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                    {selectedResult.proTraderCriteria.smartMoneyFlow.flowScore > 0 ? '+' : ''}{selectedResult.proTraderCriteria.smartMoneyFlow.flowScore}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="p-6 text-center text-muted-foreground">
+                            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>Pro Trader kriterleri hesaplanmadi. Yeterli veri gereklidir.</p>
                           </div>
                         )}
                       </TabsContent>
