@@ -466,7 +466,7 @@ export function calculateEliteScore(
 }
 
 // ==========================================
-// KARAR MOTORU
+// KARAR MOTORU - ULTRA-PRO VERSIYON
 // ==========================================
 
 export function generateDecision(
@@ -478,9 +478,87 @@ export function generateDecision(
   action: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'AVOID' | 'SELL';
   reasoning: string[];
   conviction: number;
+  proAnalysis: {
+    confluenceScore: number;
+    trendAlignment: number;
+    momentumQuality: number;
+    riskAdjustedReturn: number;
+    institutionalSignal: 'strong' | 'moderate' | 'weak' | 'none';
+    marketTiming: 'optimal' | 'good' | 'neutral' | 'poor';
+    entryQuality: 'A' | 'B' | 'C' | 'D' | 'F';
+  };
 } {
   const reasoning: string[] = [];
   let conviction = score.confidence;
+  
+  // === PRO ANALIZ HESAPLAMALARI ===
+  const signalSummary = summarizeSignals(signals);
+  
+  // Confluence Score (farkli kategorilerden sinyal sayisi)
+  const categoryStrengths: Record<string, number> = {};
+  for (const signal of signals) {
+    if (signal.type === 'strong_buy' || signal.type === 'buy') {
+      categoryStrengths[signal.category] = (categoryStrengths[signal.category] || 0) + (signal.type === 'strong_buy' ? 2 : 1);
+    }
+  }
+  const activeCategories = Object.keys(categoryStrengths).length;
+  const confluenceScore = Math.min(100, activeCategories * 20 + Object.values(categoryStrengths).reduce((a, b) => a + b, 0) * 3);
+  
+  // Trend Alignment Score
+  let trendAlignment = 50;
+  if (categoryStrengths['trend']) trendAlignment += categoryStrengths['trend'] * 10;
+  if (categoryStrengths['ichimoku']) trendAlignment += categoryStrengths['ichimoku'] * 8;
+  if (categoryStrengths['multi_timeframe']) trendAlignment += categoryStrengths['multi_timeframe'] * 12;
+  trendAlignment = Math.min(100, trendAlignment);
+  
+  // Momentum Quality Score
+  let momentumQuality = 50;
+  if (categoryStrengths['momentum']) momentumQuality += categoryStrengths['momentum'] * 8;
+  if (categoryStrengths['volume']) momentumQuality += categoryStrengths['volume'] * 6;
+  momentumQuality = Math.min(100, momentumQuality);
+  
+  // Risk Adjusted Return (Sharpe-like)
+  const expectedReturn = target.targets.moderate.percent;
+  const riskPenalty = risk.score * 0.5;
+  const riskAdjustedReturn = Math.max(0, expectedReturn - riskPenalty);
+  
+  // Institutional Signal Detection
+  let institutionalSignal: 'strong' | 'moderate' | 'weak' | 'none' = 'none';
+  const volumeSignal = categoryStrengths['volume'] || 0;
+  const strongBuyCount = signalSummary.strongBuyCount;
+  if (volumeSignal >= 4 && strongBuyCount >= 3) institutionalSignal = 'strong';
+  else if (volumeSignal >= 2 && strongBuyCount >= 2) institutionalSignal = 'moderate';
+  else if (volumeSignal >= 1 || strongBuyCount >= 1) institutionalSignal = 'weak';
+  
+  // Market Timing Score
+  let marketTiming: 'optimal' | 'good' | 'neutral' | 'poor' = 'neutral';
+  const totalBuySignals = signalSummary.strongBuyCount + signalSummary.buyCount;
+  const totalSellSignals = signalSummary.strongSellCount + signalSummary.sellCount;
+  const netSignal = totalBuySignals - totalSellSignals;
+  if (netSignal >= 8 && confluenceScore >= 70) marketTiming = 'optimal';
+  else if (netSignal >= 5 && confluenceScore >= 50) marketTiming = 'good';
+  else if (netSignal <= -3) marketTiming = 'poor';
+  
+  // Entry Quality Grade
+  let entryQuality: 'A' | 'B' | 'C' | 'D' | 'F' = 'C';
+  const combinedScore = (confluenceScore + trendAlignment + momentumQuality) / 3;
+  if (combinedScore >= 80 && risk.level === 'very_low') entryQuality = 'A';
+  else if (combinedScore >= 70 && (risk.level === 'very_low' || risk.level === 'low')) entryQuality = 'B';
+  else if (combinedScore >= 55 && risk.level !== 'extreme' && risk.level !== 'very_high') entryQuality = 'C';
+  else if (combinedScore >= 40) entryQuality = 'D';
+  else entryQuality = 'F';
+  
+  const proAnalysis = {
+    confluenceScore,
+    trendAlignment,
+    momentumQuality,
+    riskAdjustedReturn,
+    institutionalSignal,
+    marketTiming,
+    entryQuality,
+  };
+  
+  // === KARAR MANTIGI ===
   
   // Deal breaker kontrolu
   if (risk.dealBreakers.length > 0) {
@@ -492,6 +570,7 @@ export function generateDecision(
         'Risk cok yuksek - para kaybetme olasiligi yuksek.'
       ],
       conviction: 0,
+      proAnalysis: { ...proAnalysis, entryQuality: 'F' },
     };
   }
   
@@ -505,53 +584,63 @@ export function generateDecision(
         '1M TL pozisyon icin cok riskli.'
       ],
       conviction: Math.min(20, conviction),
+      proAnalysis: { ...proAnalysis, entryQuality: 'F' },
     };
   }
   
-  // Sinyal analizi
-  const signalSummary = summarizeSignals(signals);
   const netBuySignals = signalSummary.strongBuyCount + signalSummary.buyCount - 
                         signalSummary.strongSellCount - signalSummary.sellCount;
   
-  // STRONG_BUY kriterleri
+  // STRONG_BUY kriterleri - COK SIKI
   if (
-    score.grade === 'A+' || score.grade === 'A' &&
-    risk.level === 'low' || risk.level === 'very_low' &&
+    (score.grade === 'A+' || score.grade === 'A') &&
+    (risk.level === 'low' || risk.level === 'very_low') &&
     target.riskRewardRatios.moderate >= 2 &&
-    signalSummary.strongBuyCount >= 2 &&
-    netBuySignals >= 5
+    signalSummary.strongBuyCount >= 3 &&
+    netBuySignals >= 7 &&
+    confluenceScore >= 70 &&
+    activeCategories >= 4 &&
+    entryQuality === 'A'
   ) {
     reasoning.push(
-      `Mukemmel firsat! Grade: ${score.grade}`,
-      `${signalSummary.strongBuyCount} guclu alim sinyali`,
-      `Risk/Odul: 1:${target.riskRewardRatios.moderate}`,
-      `Risk seviyesi: ${risk.level}`,
-      'Tum kosullar ideal.'
+      `MUKEMMEL FIRSAT! Grade: ${score.grade}`,
+      `${signalSummary.strongBuyCount} GUCLU alim sinyali, ${activeCategories} farkli kategoride`,
+      `Confluence Skoru: ${confluenceScore}/100`,
+      `Risk/Odul: 1:${target.riskRewardRatios.moderate.toFixed(1)}`,
+      `Kurumsal Sinyal: ${institutionalSignal.toUpperCase()}`,
+      `Giris Kalitesi: ${entryQuality}`,
+      'Tum profesyonel kriterler karsilandi!'
     );
     return {
       action: 'STRONG_BUY',
       reasoning,
-      conviction: Math.min(95, conviction + 20),
+      conviction: Math.min(98, conviction + 25),
+      proAnalysis,
     };
   }
   
-  // BUY kriterleri
+  // BUY kriterleri - SIKI
   if (
     (score.grade === 'A+' || score.grade === 'A' || score.grade === 'B+') &&
-    (risk.level === 'low' || risk.level === 'medium' || risk.level === 'very_low') &&
+    (risk.level === 'low' || risk.level === 'very_low') &&
     target.riskRewardRatios.conservative >= 1.5 &&
-    netBuySignals >= 3
+    netBuySignals >= 5 &&
+    confluenceScore >= 50 &&
+    activeCategories >= 3 &&
+    (entryQuality === 'A' || entryQuality === 'B')
   ) {
     reasoning.push(
-      `Iyi firsat. Grade: ${score.grade}`,
-      `Net ${netBuySignals} alim sinyali`,
-      `Risk/Odul: 1:${target.riskRewardRatios.conservative}`,
-      `Risk seviyesi: ${risk.level}`
+      `Guvenilir Firsat! Grade: ${score.grade}`,
+      `Net ${netBuySignals} alim sinyali, ${activeCategories} kategoride`,
+      `Confluence Skoru: ${confluenceScore}/100`,
+      `Risk/Odul: 1:${target.riskRewardRatios.conservative.toFixed(1)}`,
+      `Giris Kalitesi: ${entryQuality}`
     );
     return {
       action: 'BUY',
       reasoning,
-      conviction: Math.min(85, conviction + 10),
+      conviction: Math.min(92, conviction + 15),
+      proAnalysis,
     };
   }
   
@@ -570,6 +659,7 @@ export function generateDecision(
       action: 'SELL',
       reasoning,
       conviction: Math.min(70, conviction),
+      proAnalysis: { ...proAnalysis, entryQuality: 'F' },
     };
   }
   
@@ -577,14 +667,16 @@ export function generateDecision(
   reasoning.push(
     `Grade: ${score.grade}`,
     `Net sinyal: ${netBuySignals > 0 ? '+' : ''}${netBuySignals}`,
+    `Confluence: ${confluenceScore}/100`,
     `Risk: ${risk.level}`,
-    'Net sinyal yok - bekleyin veya daha iyi firsatlara bakin.'
+    'Profesyonel kriterler karsilanmiyor - daha iyi firsatlari bekleyin.'
   );
   
   return {
     action: 'HOLD',
     reasoning,
     conviction: Math.min(50, conviction),
+    proAnalysis,
   };
 }
 
@@ -709,18 +801,62 @@ export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[
     // Deal breaker olanlar disinda
     if (r.risk.dealBreakers.length > 0) return false;
     
-    // AVOID ve SELL disinda
-    if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
+    // SADECE STRONG_BUY ve BUY
+    if (r.decision.action !== 'STRONG_BUY' && r.decision.action !== 'BUY') return false;
     
-    // Minimum grade B
-    if (r.score.grade === 'C' || r.score.grade === 'D' || r.score.grade === 'F') return false;
+    // Minimum grade A veya B+
+    if (r.score.grade !== 'A+' && r.score.grade !== 'A' && r.score.grade !== 'B+') return false;
     
-    // Minimum conviction %40
-    if (r.decision.conviction < 40) return false;
+    // Minimum conviction %85 - PROFESYONEL ESIK
+    if (r.decision.conviction < 85) return false;
     
-    // Risk cok yuksek olmasin
-    if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
+    // Minimum overall skor %65
+    if (r.score.overall < 65) return false;
+    
+    // Sadece dusuk ve cok dusuk risk
+    if (r.risk.level !== 'low' && r.risk.level !== 'very_low') return false;
+    
+    // Minimum 5 alim sinyali
+    const totalBuySignals = r.signalSummary.strongBuyCount + r.signalSummary.buyCount;
+    if (totalBuySignals < 5) return false;
+    
+    // Risk/Reward en az 1.5
+    if (r.target.riskRewardRatios.conservative < 1.5) return false;
+    
+    // Minimum %0.8 gunluk hacim/fiyat orani (likidite)
+    if (r.volume.ratio < 0.8) return false;
     
     return true;
   });
+}
+
+// Ultra-Elite filtreleme - TOP 5 icin
+export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
+  const baseFiltered = filterEliteResults(results);
+  
+  // Ek ultra-elite kriterler
+  return baseFiltered.filter(r => {
+    // Minimum 2 STRONG_BUY kategoride sinyal
+    const strongBuyCategories = new Set<string>();
+    for (const signal of r.signals) {
+      if (signal.type === 'strong_buy') {
+        strongBuyCategories.add(signal.category);
+      }
+    }
+    if (strongBuyCategories.size < 2) return false;
+    
+    // EMA alignment pozitif olmali
+    if (r.indicators.ema.alignment !== 'perfect_bullish' && r.indicators.ema.alignment !== 'bullish') return false;
+    
+    // ADX trend yukari olmali
+    if (r.indicators.adx.trend !== 'strong_up' && r.indicators.adx.trend !== 'up') return false;
+    
+    // RSI 30-65 arasi (ne asiri alim ne asiri satim)
+    if (r.indicators.rsi.current < 30 || r.indicators.rsi.current > 65) return false;
+    
+    // Bearish diverjans OLMAMALI
+    if (r.indicators.rsi.divergence === 'bearish' || r.indicators.macd.divergence === 'bearish') return false;
+    
+    return true;
+  }).slice(0, 5); // Sadece TOP 5
 }

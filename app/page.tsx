@@ -35,12 +35,16 @@ export default function HomePage() {
               </div>
               <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
                 <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">25+ Indikator</span>
+                <span className="text-sm font-medium text-primary">35+ Indikator</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="hidden sm:inline">Min Guven:</span>
                 <span className="font-semibold text-primary">%85</span>
+              </div>
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <Target className="h-4 w-4 text-amber-500" />
+                <span className="text-xs font-medium text-amber-500">TOP 5</span>
               </div>
             </div>
           </div>
@@ -100,7 +104,7 @@ export default function HomePage() {
             BIST Elite Trader &copy; 2024 - Kurumsal Seviye Analiz Platformu
           </p>
           <p className="mt-1">
-            Veriler Yahoo Finance&apos;ten alinmaktadir. 25+ teknik indikator ile dunya standartlarinda analiz.
+            Veriler Yahoo Finance&apos;ten alinmaktadir. 35+ teknik indikator, %85 minimum guven esigi, TOP 5 ultra-elite filtreleme.
           </p>
         </footer>
       </main>

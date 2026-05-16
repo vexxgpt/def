@@ -344,6 +344,15 @@ export interface EliteScanResult {
     action: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'AVOID' | 'SELL';
     reasoning: string[];
     conviction: number; // 0-100
+    proAnalysis?: {
+      confluenceScore: number;
+      trendAlignment: number;
+      momentumQuality: number;
+      riskAdjustedReturn: number;
+      institutionalSignal: 'strong' | 'moderate' | 'weak' | 'none';
+      marketTiming: 'optimal' | 'good' | 'neutral' | 'poor';
+      entryQuality: 'A' | 'B' | 'C' | 'D' | 'F';
+    };
   };
   
   // Meta
