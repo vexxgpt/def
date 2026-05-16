@@ -1,11 +1,11 @@
-import { AdvancedScanner } from "@/components/advanced-scanner";
+import { EliteScanner } from "@/components/elite-scanner";
 import { MarketStatus } from "@/components/market-status";
 import { StockList } from "@/components/stock-list";
 import { PositionTracker } from "@/components/position-tracker";
 import { Watchlist } from "@/components/watchlist";
 import { AlertsPanel } from "@/components/alerts-panel";
 import { StockDetail } from "@/components/stock-detail";
-import { Target, TrendingUp, Zap } from "lucide-react";
+import { Target, TrendingUp, Zap, Shield, Crown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function HomePage() {
@@ -16,25 +16,31 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-2.5 bg-primary/20 rounded-xl glow-green-sm">
-                <Target className="h-7 w-7 text-primary" />
+              <div className="p-2.5 bg-gradient-to-br from-amber-500/20 to-primary/20 rounded-xl glow-green-sm">
+                <Crown className="h-7 w-7 text-amber-500" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground tracking-tight">BIST Tarayici</h1>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                  BIST Elite Trader
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                  610 Hisse Analizi - %1 Yukselis Hedefli Strateji
+                  610 Hisse - Kurumsal Seviye Analiz Sistemi
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <Shield className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium text-amber-500">Sifir Hata Toleransi</span>
+              </div>
+              <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
                 <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Kapanista Al - Sabah Sat</span>
+                <span className="text-sm font-medium text-primary">25+ Indikator</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="hidden sm:inline">Hedef:</span>
-                <span className="font-semibold text-primary">%1</span>
+                <span className="hidden sm:inline">Min Guven:</span>
+                <span className="font-semibold text-primary">%85</span>
               </div>
             </div>
           </div>
@@ -47,34 +53,26 @@ export default function HomePage() {
         <MarketStatus />
 
         {/* Main Tabs */}
-        <Tabs defaultValue="scanner" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md bg-muted/50 border border-border">
+        <Tabs defaultValue="elite-scanner" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-lg bg-muted/50 border border-border">
             <TabsTrigger 
-              value="scanner"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              value="elite-scanner"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-primary data-[state=active]:text-primary-foreground"
             >
-              <Target className="h-4 w-4 mr-2" />
-              Gelismis Tarayici
+              <Crown className="h-4 w-4 mr-2" />
+              Elite Tarayici
             </TabsTrigger>
             <TabsTrigger 
               value="market"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               <TrendingUp className="h-4 w-4 mr-2" />
-              Piyasa Goruntule
+              Piyasa
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="scanner" className="mt-6">
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-              <div className="xl:col-span-3">
-                <AdvancedScanner />
-              </div>
-              <div className="space-y-6">
-                <AlertsPanel />
-                <Watchlist />
-              </div>
-            </div>
+          <TabsContent value="elite-scanner" className="mt-6">
+            <EliteScanner />
           </TabsContent>
 
           <TabsContent value="market" className="mt-6">
@@ -99,10 +97,10 @@ export default function HomePage() {
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground py-6 border-t border-border">
           <p>
-            BIST Tarayici &copy; 2024 - Bu platform yatirim tavsiyesi vermez.
+            BIST Elite Trader &copy; 2024 - Kurumsal Seviye Analiz Platformu
           </p>
           <p className="mt-1">
-            Veriler Yahoo Finance&apos;ten alinmaktadir. Tum yatirim kararlari size aittir.
+            Veriler Yahoo Finance&apos;ten alinmaktadir. 25+ teknik indikator ile dunya standartlarinda analiz.
           </p>
         </footer>
       </main>
