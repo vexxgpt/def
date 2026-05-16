@@ -733,6 +733,47 @@ export function EliteScanner() {
                               </span>
                             </div>
                             
+                            {/* AI TAVSIYE BADGE */}
+                            {(() => {
+                              const confidence = stock.decision.conviction;
+                              const riskLevel = stock.risk.level;
+                              const action = stock.decision.action;
+                              const morningGreenScore = stock.morningGreen?.morningGreenScore || 0;
+                              const institutionalSignal = stock.proTraderCriteria?.institutionalAccumulation.signal || 'neutral';
+                              const smartMoneyFlow = stock.proTraderCriteria?.smartMoneyFlow.bigPlayerActivity || 'neutral';
+                              
+                              // AI analizinden tavsiye
+                              const aiRecommendation = aiStockAnalysis?.recommendation;
+                              
+                              let adviceType = 'DIKKATLI_OL';
+                              let adviceColor = 'bg-chart-4 text-white';
+                              
+                              if (
+                                (action === 'STRONG_BUY' || action === 'BUY') &&
+                                confidence >= 70 &&
+                                (riskLevel === 'low' || riskLevel === 'very_low' || riskLevel === 'medium') &&
+                                morningGreenScore >= 70 &&
+                                (institutionalSignal === 'strong_accumulation' || institutionalSignal === 'accumulation') &&
+                                (smartMoneyFlow === 'buying' || smartMoneyFlow === 'neutral')
+                              ) {
+                                adviceType = 'POZISYON AC';
+                                adviceColor = 'bg-primary text-primary-foreground';
+                              } else if (
+                                action === 'AVOID' || action === 'SELL' ||
+                                riskLevel === 'very_high' || riskLevel === 'extreme' ||
+                                aiRecommendation === 'UZAK_DUR'
+                              ) {
+                                adviceType = 'UZAK DUR';
+                                adviceColor = 'bg-destructive text-destructive-foreground';
+                              }
+                              
+                              return (
+                                <Badge className={`mt-2 w-full justify-center font-bold ${adviceColor}`}>
+                                  {adviceType}
+                                </Badge>
+                              );
+                            })()}
+                            
                             <div className="flex items-center gap-2 mt-2">
                               <span className={`text-sm font-bold ${getGradeColor(stock.score.grade)}`}>
                                 {stock.score.grade}
@@ -877,6 +918,47 @@ export function EliteScanner() {
                             {getActionIcon(selectedResult.decision.action)}
                             <span className="ml-1 font-semibold">{selectedResult.decision.action.replace('_', ' ')}</span>
                           </Badge>
+                          {/* TURKCE TAVSIYE BADGE - BUYUK */}
+                          {(() => {
+                            const confidence = selectedResult.decision.conviction;
+                            const riskLevel = selectedResult.risk.level;
+                            const action = selectedResult.decision.action;
+                            const morningGreenScore = selectedResult.morningGreen?.morningGreenScore || 0;
+                            const institutionalSignal = selectedResult.proTraderCriteria?.institutionalAccumulation.signal || 'neutral';
+                            const smartMoneyFlow = selectedResult.proTraderCriteria?.smartMoneyFlow.bigPlayerActivity || 'neutral';
+                            
+                            if (
+                              (action === 'STRONG_BUY' || action === 'BUY') &&
+                              confidence >= 70 &&
+                              (riskLevel === 'low' || riskLevel === 'very_low' || riskLevel === 'medium') &&
+                              morningGreenScore >= 70 &&
+                              (institutionalSignal === 'strong_accumulation' || institutionalSignal === 'accumulation')
+                            ) {
+                              return (
+                                <Badge className="bg-primary text-primary-foreground text-sm px-3 py-1 font-bold animate-pulse">
+                                  <ThumbsUp className="h-4 w-4 mr-1" />
+                                  POZISYON AC
+                                </Badge>
+                              );
+                            } else if (
+                              action === 'AVOID' || action === 'SELL' ||
+                              riskLevel === 'very_high' || riskLevel === 'extreme'
+                            ) {
+                              return (
+                                <Badge className="bg-destructive text-destructive-foreground text-sm px-3 py-1 font-bold">
+                                  <Ban className="h-4 w-4 mr-1" />
+                                  UZAK DUR
+                                </Badge>
+                              );
+                            } else {
+                              return (
+                                <Badge className="bg-chart-4 text-white text-sm px-3 py-1 font-bold">
+                                  <AlertCircle className="h-4 w-4 mr-1" />
+                                  DIKKATLI OL
+                                </Badge>
+                              );
+                            }
+                          })()}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{selectedResult.name}</p>
                       </div>
@@ -933,6 +1015,262 @@ export function EliteScanner() {
 
                       {/* Overview Tab */}
                       <TabsContent value="overview" className="p-6 space-y-6">
+                        {/* AI TAVSIYE KARTI - TUM VERILERI ANALIZ EDER */}
+                        {(() => {
+                          // AI analizinden bu hisse icin veri al
+                          const aiStockData = aiAnalysis?.analyses.find(a => a.symbol === selectedResult.symbol);
+                          const aiRank = aiAnalysis?.ranking.indexOf(selectedResult.symbol);
+                          const isTopPick = selectedResult.symbol === aiAnalysis?.topPick?.symbol;
+                          
+                          // Tum verileri analiz et ve tavsiye olustur
+                          const generateTurkishAdvice = () => {
+                            const score = selectedResult.score.overall;
+                            const confidence = selectedResult.decision.conviction;
+                            const riskLevel = selectedResult.risk.level;
+                            const action = selectedResult.decision.action;
+                            const morningGreenScore = selectedResult.morningGreen?.morningGreenScore || 0;
+                            const overnightScore = selectedResult.overnightAnalysis?.weeklyScore || 0;
+                            const proScore = selectedResult.proTraderCriteria?.proScore || 0;
+                            const ultraEliteScore = selectedResult.ultraEliteScore || 0;
+                            const riskReward = selectedResult.target.riskRewardRatios.moderate;
+                            const minerviniPassed = selectedResult.proTraderCriteria?.minerviniTemplate.passed || false;
+                            const institutionalSignal = selectedResult.proTraderCriteria?.institutionalAccumulation.signal || 'neutral';
+                            const smartMoneyFlow = selectedResult.proTraderCriteria?.smartMoneyFlow.bigPlayerActivity || 'neutral';
+                            
+                            // POZISYON AC kriterleri
+                            if (
+                              (action === 'STRONG_BUY' || action === 'BUY') &&
+                              confidence >= 70 &&
+                              (riskLevel === 'low' || riskLevel === 'very_low' || riskLevel === 'medium') &&
+                              morningGreenScore >= 70 &&
+                              (institutionalSignal === 'strong_accumulation' || institutionalSignal === 'accumulation') &&
+                              (smartMoneyFlow === 'buying' || smartMoneyFlow === 'neutral')
+                            ) {
+                              return {
+                                type: 'POZISYON_AC',
+                                color: 'bg-primary',
+                                borderColor: 'border-primary',
+                                bgColor: 'bg-primary/10',
+                                icon: <ThumbsUp className="h-6 w-6" />,
+                                title: 'POZISYON AC',
+                                subtitle: 'Tum kriterler karsilandi - Guvenle giris yapilabilir',
+                              };
+                            }
+                            
+                            // DIKKATLI OL kriterleri
+                            if (
+                              (action === 'STRONG_BUY' || action === 'BUY' || action === 'HOLD') &&
+                              confidence >= 50 &&
+                              riskLevel !== 'very_high' && riskLevel !== 'extreme'
+                            ) {
+                              return {
+                                type: 'DIKKATLI_OL',
+                                color: 'bg-chart-4',
+                                borderColor: 'border-chart-4',
+                                bgColor: 'bg-chart-4/10',
+                                icon: <AlertCircle className="h-6 w-6" />,
+                                title: 'DIKKATLI OL',
+                                subtitle: 'Bazi kriterler eksik - Kucuk pozisyon veya bekle',
+                              };
+                            }
+                            
+                            // UZAK DUR
+                            return {
+                              type: 'UZAK_DUR',
+                              color: 'bg-destructive',
+                              borderColor: 'border-destructive',
+                              bgColor: 'bg-destructive/10',
+                              icon: <Ban className="h-6 w-6" />,
+                              title: 'UZAK DUR',
+                              subtitle: 'Riskli - Pozisyon acilmasi onerilmez',
+                            };
+                          };
+                          
+                          const advice = generateTurkishAdvice();
+                          
+                          return (
+                            <div className={`p-5 rounded-xl border-2 ${advice.borderColor} ${advice.bgColor}`}>
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-3 rounded-xl ${advice.color} text-white`}>
+                                    {advice.icon}
+                                  </div>
+                                  <div>
+                                    <h3 className="text-2xl font-bold text-foreground">{advice.title}</h3>
+                                    <p className="text-sm text-muted-foreground">{advice.subtitle}</p>
+                                  </div>
+                                </div>
+                                {isTopPick && (
+                                  <Badge className="bg-primary text-primary-foreground">
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                    AI TOP PICK
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              {/* Detayli Metrikler Grid */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Sabah Yesil Olasiligi</span>
+                                  <p className={`text-lg font-bold ${
+                                    (aiStockData?.morningGreenProbability || selectedResult.morningGreen?.morningGreenScore || 0) >= 70 
+                                      ? 'text-primary' 
+                                      : (aiStockData?.morningGreenProbability || selectedResult.morningGreen?.morningGreenScore || 0) >= 50 
+                                      ? 'text-chart-4' 
+                                      : 'text-destructive'
+                                  }`}>
+                                    %{aiStockData?.morningGreenProbability || selectedResult.morningGreen?.morningGreenScore || 0}
+                                  </p>
+                                </div>
+                                
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Gece Riski</span>
+                                  <Badge className={`mt-1 ${
+                                    (aiStockData?.overnightRisk || 'orta') === 'dusuk' ? 'bg-primary' :
+                                    (aiStockData?.overnightRisk || 'orta') === 'orta' ? 'bg-chart-4' :
+                                    'bg-destructive'
+                                  }`}>
+                                    {aiStockData?.overnightRisk || selectedResult.risk.level}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Guven Seviyesi</span>
+                                  <p className="text-lg font-bold text-foreground">%{selectedResult.decision.conviction}</p>
+                                </div>
+                                
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Pro Trader Skoru</span>
+                                  <p className="text-lg font-bold text-foreground">{selectedResult.proTraderCriteria?.proScore || 0}/100</p>
+                                </div>
+                                
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Minervini Template</span>
+                                  <Badge className={`mt-1 ${selectedResult.proTraderCriteria?.minerviniTemplate.passed ? 'bg-primary' : 'bg-destructive'}`}>
+                                    {selectedResult.proTraderCriteria?.minerviniTemplate.passed ? 'PASSED' : 'FAILED'}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Kurumsal Sinyal</span>
+                                  <Badge className={`mt-1 ${
+                                    selectedResult.proTraderCriteria?.institutionalAccumulation.signal?.includes('accumulation') 
+                                      ? 'bg-primary' 
+                                      : selectedResult.proTraderCriteria?.institutionalAccumulation.signal?.includes('distribution')
+                                      ? 'bg-destructive'
+                                      : 'bg-muted'
+                                  }`}>
+                                    {selectedResult.proTraderCriteria?.institutionalAccumulation.signal || 'N/A'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {/* Teknik Gostergeler Ozet */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">RSI (14)</span>
+                                  <p className="text-lg font-bold">{selectedResult.indicators.rsi.current.toFixed(1)}</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">MACD</span>
+                                  <p className="text-lg font-bold">{selectedResult.indicators.macd.histogram.toFixed(3)}</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">ADX</span>
+                                  <p className="text-lg font-bold">{selectedResult.indicators.adx.value.toFixed(1)}</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">ATR %</span>
+                                  <p className="text-lg font-bold">{(selectedResult.indicators.atr.percent * 100).toFixed(2)}%</p>
+                                </div>
+                              </div>
+                              
+                              {/* Trend ve Hacim Analizi */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">EMA Dizilimi</span>
+                                  <Badge className={`mt-1 ${
+                                    selectedResult.indicators.ema.alignment === 'perfect_bullish' ? 'bg-primary' :
+                                    selectedResult.indicators.ema.alignment === 'bullish' ? 'bg-chart-2' :
+                                    selectedResult.indicators.ema.alignment === 'bearish' ? 'bg-destructive' :
+                                    'bg-muted'
+                                  }`}>
+                                    {selectedResult.indicators.ema.alignment}
+                                  </Badge>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Gunluk Trend</span>
+                                  <Badge className={`mt-1 ${
+                                    selectedResult.indicators.dailyTrend === 'up' ? 'bg-primary' :
+                                    selectedResult.indicators.dailyTrend === 'down' ? 'bg-destructive' :
+                                    'bg-muted'
+                                  }`}>
+                                    {selectedResult.indicators.dailyTrend}
+                                  </Badge>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Hacim/Ort</span>
+                                  <p className="text-lg font-bold">{selectedResult.volume.ratio.toFixed(2)}x</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">OBV Trend</span>
+                                  <Badge className={`mt-1 ${
+                                    selectedResult.indicators.obv.trend === 'rising' ? 'bg-primary' :
+                                    selectedResult.indicators.obv.trend === 'falling' ? 'bg-destructive' :
+                                    'bg-muted'
+                                  }`}>
+                                    {selectedResult.indicators.obv.trend}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {/* AI Analiz Gerekceleri */}
+                              {aiStockData && (
+                                <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                                  <h4 className="font-semibold text-sm text-foreground mb-2 flex items-center gap-2">
+                                    <Brain className="h-4 w-4 text-chart-4" />
+                                    AI Analiz Gerekceleri
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground mb-2">{aiStockData.reasoning}</p>
+                                  {aiStockData.keyFactors && aiStockData.keyFactors.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {aiStockData.keyFactors.map((factor, idx) => (
+                                        <Badge key={idx} variant="outline" className="text-xs">
+                                          {factor}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {/* Strateji Onerisi */}
+                              <div className="grid grid-cols-2 gap-3 mt-4">
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Aksam Stratejisi</span>
+                                  <Badge className={`mt-1 w-full justify-center ${
+                                    selectedResult.overnightAnalysis?.strategy?.eveningAction === 'BUY_BEFORE_CLOSE' ? 'bg-primary' :
+                                    selectedResult.overnightAnalysis?.strategy?.eveningAction === 'HOLD' ? 'bg-chart-4' :
+                                    'bg-muted'
+                                  }`}>
+                                    {selectedResult.overnightAnalysis?.strategy?.eveningAction || aiStockData?.recommendation?.replace('_', ' ') || 'BEKLE'}
+                                  </Badge>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <span className="text-xs text-muted-foreground">Sabah Stratejisi</span>
+                                  <Badge className={`mt-1 w-full justify-center ${
+                                    selectedResult.overnightAnalysis?.strategy?.morningAction === 'BUY_AT_OPEN' ? 'bg-primary' :
+                                    selectedResult.overnightAnalysis?.strategy?.morningAction === 'BUY_ON_DIP' ? 'bg-chart-2' :
+                                    'bg-muted'
+                                  }`}>
+                                    {selectedResult.overnightAnalysis?.strategy?.morningAction || 'BEKLE VE IZLE'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* Decision Reasoning */}
                         <div className={`p-4 rounded-xl border ${
                           selectedResult.decision.action === 'STRONG_BUY' || selectedResult.decision.action === 'BUY'
