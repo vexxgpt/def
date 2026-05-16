@@ -627,7 +627,7 @@ function calculateMorningScore(
   if (analysis.hotStreak.active) {
     hotStreakBonus = Math.min(15, 
       analysis.hotStreak.currentStreak * 3 + 
-      (analysis.hotStreak.momentumAcceleration ? 5 : 0)
+      (analysis.hotStreak.streakStrength > 60 ? 5 : 0)
     );
   }
   

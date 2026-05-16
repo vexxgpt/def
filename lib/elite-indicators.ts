@@ -427,7 +427,7 @@ export function calculateParabolicSAR(bars: HistoricalBar[]): {
   let ep = bars[0].high;
   let sar = bars[0].low;
   let trend: 'bullish' | 'bearish' = 'bullish';
-  let prevTrend = trend;
+  let prevTrend: 'bullish' | 'bearish' = trend;
   
   for (let i = 1; i < bars.length; i++) {
     const high = bars[i].high;

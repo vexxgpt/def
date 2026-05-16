@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getYahooSymbol } from "@/lib/bist-stocks";
-import type { HistoricalDataResponse, HistoricalBar } from "@/lib/scanner-types";
+import type { HistoricalDataResponse, HistoricalBar } from "@/lib/elite-scanner-types";
 
 // Yahoo Finance v3 - instance based API
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
