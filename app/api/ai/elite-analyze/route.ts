@@ -109,68 +109,127 @@ ${index + 1}. ${stock.symbol} (${stock.name})
 `;
     }).join('\n');
 
-    const prompt = `Sen dunya capinda bir profesyonel trader ve Borsa Istanbul uzmanisin. 
-Mark Minervini, William O'Neil ve Paul Tudor Jones gibi efsanevi trader'larin metodolojilerini kullaniyorsun.
+    const prompt = `ROLUNUZ: Mark Minervini, William O'Neil ve Paul Tudor Jones metodolojilerini kullanan PROFESYONEL BORSA ANALISTI
+TARAYICI: 35 İNDİKATÖR (Minervini Template, Momentum, Volume, Trend, Price Action, Smart Money akımları vb.)
+STRATEJI: Overnight Gap-Up Trading - Saat 17:45'te AL, Sabah 10:00+ YESIL AÇILIŞTA SAT
 
-TRADING STRATEJISI:
-- Saat 17:45'te (kapanistan 15 dk once) ALIS yapilacak
-- Sabah 10:00'dan sonra hisse YESIL ACARSA hemen SATIS yapilacak
-- AMAC: Aksam aldiktan sonra SABAH KIRMIZI ACMAMASI - yani overnight gap up stratejisi
-
-ELITE TARAMA SONUCLARI - TOP 5 HISSE:
+=== ELITE SCANNER SONUÇLARI ===
 ${stocksSummary}
 
-GOREV:
-Bu 5 hisseyi detayli analiz et ve SABAH YESIL YAKIP YAKMAYACAGINI tahmin et.
+=== DETAYLI ANALİZ TALİMATLARI ===
 
-Her hisse icin DETAYLAR:
-1. Sabah yesil acma olasiligi (0-100)
-2. Gece riski (dusuk/orta/yuksek)
-3. Tavsiye (AKSAM_AL / BEKLE / UZAK_DUR)
-4. NEDEN (Kisa aciklama - max 30 kelime)
-5. POZISYON MIKTARI (toplam sermayenin yuzde kaci bu hisseye alis yapilmali)
-6. GENEL BAKIS (Genel durum degerlendirmesi - 1-2 cumle)
-7. SINYALLER (Teknik sinyaller - 2-3 ana sinyal)
-8. RISK ANALIZI (Spesifik riskler - 2-3 ana risk)
-9. HEDEFLER (Al/Sat seviyeleri ve hedefleri)
-10. TEKNIK ANALIZ (Destek/Direnç seviyeleri)
-11. OVERNIGHT (Overnight risk detaylari ve gap tahminleri)
-12. PRO TRADER (Pro trader perspektifi - akilan para hareketi, smart money, kurumsal birikim)
+HER HİSSE İÇİN ŞU MADDELERİ ANALIZE TÜM 35 İNDİKATÖR'Ü KULLANAK DETAYLI YAZ:
 
-Sonra TUM 5 HISSEYI KARSILASTIR ve en iyiden en kotuye SIRALA.
+1. **GENEL BAKIŞ**: (2-3 cümle)
+   - Hissenin genel durumu
+   - Trendinin yönü (Yükselen/Düşen/Yatay)
+   - Momentum durumu
+   - Fiyat hareketi karakteri
 
-JSON formatinda yanit ver (Turkce karakterler kullanilab):
+2. **SINYALLER** (Minimum 5-6 ayrı sinyal, her biri açıklanması gerekli):
+   - Minervini Template sinyalleri (Trend, Momentum, RS, Consolidation vb.)
+   - Volume sinyalleri (Akkümülasyon, Distribüsyon)
+   - Price Action sinyalleri (Double Bottom, Cup & Handle, vb.)
+   - Kurumsal birikim sinyalleri
+   - Smart Money akışı sinyalleri
+   - Momentum göstergeleri (MACD, RSI, Stochastic vb.)
+   - Her sinyal için yüzde skoru ver (ör: %85, %90, vb.)
+
+3. **RISK ANALİZİ** (Minimum 4-5 spesifik risk, her biri yüzde olasılıkla):
+   - Gece riski (Gap down olasılığı - %)
+   - Stop loss kırılma riski (%)
+   - Kurumsal satış riski (%)
+   - Piyasa riski (Genel BIST düşüş riski)
+   - Teknik direnç kırılma riski (%)
+   - Manuplasyon riski (%)
+
+4. **HEDEFLER** (Detaylı seviyeleri TL cinsinden ver):
+   - AL: Önerilen alış seviyesi
+   - KÂR SATIŞ 1: İlk kar satış hedefi (%2-3)
+   - KÂR SATIŞ 2: İkinci kar satış hedefi (%4-6)
+   - KÂR SATIŞ 3: Nihai kar satış hedefi (%8-12)
+   - STOP LOSS: Stop loss seviyesi
+
+5. **TEKNİK ANALİZ** (Detaylı destek/direnç):
+   - Kısa dönem destek seviyeleri
+   - Orta dönem destek seviyeleri
+   - Direnç seviyeleri
+   - İçteki Doji/Engulfing patternleri
+   - Fibonacci seviyeleri
+   - Pivot seviyeleri
+
+6. **OVERNIGHT RİSK DETAYLARI** (Overnight gap stratejisine göre):
+   - Sabah yeşil açma olasılığı (%)
+   - Gap up beklenen % miktarı
+   - Gap down riski (%)
+   - Overnight düşüş olasılığı (%)
+   - Tarihsel sabah yeşil oranı
+   - Haftanın ve ayın eğilimi
+
+7. **PRO TRADER PERSPEKTİFİ** (Kurumsal/Smart Money):
+   - Akıllı para hareketi (Büyük oyuncu alış/satış)
+   - Kurumsal katılım derecesi (%)
+   - Block trades aktivitesi
+   - Options flow sinyalleri
+   - Insider activity düzeyi
+   - Short covering olasılığı
+
+8. **POZİSYON MIKTARI**: Portfolio'nun kaçta kaçı bu hisseye yatırılmalı (%)
+   - Düşük riskli (düşük yeşil olasılığı): %2-3
+   - Orta riskli (orta yeşil olasılığı): %5-7
+   - Yüksek güven (yüksek yeşil olasılığı): %8-12
+
+=== JSON YANIT FORMATІ ===
+YANIT SADECE BU JSON FORMATINDA OLMALI (Türkçe karakterler gerekli):
+
 {
   "topPick": {
-    "symbol": "EN_IYI_HISSE",
-    "confidence": 0-100,
-    "reasoning": "Neden bu hisse en iyi secim - 1 cumle"
+    "symbol": "EN_İYİ_HİSSE",
+    "confidence": 85-100,
+    "reasoning": "Bu hisse neden #1 seçim - önemli nedenleri 1 cümle"
   },
   "analyses": [
     {
       "symbol": "XXXXX",
       "morningGreenProbability": 0-100,
-      "overnightRisk": "dusuk" | "orta" | "yuksek",
+      "overnightRisk": "düşük" | "orta" | "yüksek",
       "recommendation": "AKSAM_AL" | "BEKLE" | "UZAK_DUR",
-      "reasoning": "Neden tavsiyesi (1-2 cumle)",
-      "positionSize": "Portfolio'nun yuzde kaci (orn: %5)",
-      "genel": "Genel durum degerlendirmesi (1 cumle)",
-      "signals": ["Sinyal1", "Sinyal2", "Sinyal3"],
-      "riskAnalysis": "Risk degerlendirmesi (2-3 cumle)",
+      "reasoning": "Spesifik neden tavsiyesi (2-3 cümle, somut veriler içermeli)",
+      "positionSize": "%X (Açıklama: neden bu yüzde)",
+      "genel": "Hissenin genel durumu, trend ve momentum (2-3 cümle)",
+      "signals": [
+        "Sinyal 1: Açıklaması (%YZ skoru)",
+        "Sinyal 2: Açıklaması (%YZ skoru)",
+        "Sinyal 3: Açıklaması (%YZ skoru)",
+        "Sinyal 4: Açıklaması (%YZ skoru)",
+        "Sinyal 5: Açıklaması (%YZ skoru)",
+        "Sinyal 6: Açıklaması (%YZ skoru)"
+      ],
+      "riskAnalysis": "Detaylı risk değerlendirmesi:\n- Risk 1: Açıklama (% olasılık)\n- Risk 2: Açıklama (% olasılık)\n- Risk 3: Açıklama (% olasılık)\n- Risk 4: Açıklama (% olasılık)\n- Risk 5: Açıklama (% olasılık)",
       "targets": {
-        "buy": "Al seviyesi",
-        "take_profit": "Kar satisi seviyesi",
-        "stop_loss": "Stop loss seviyesi"
+        "buy": "AL: X.XX TL (Açıklama)",
+        "take_profit_1": "KAR_1: X.XX TL (%+2-3)",
+        "take_profit_2": "KAR_2: X.XX TL (%+4-6)",
+        "take_profit_3": "KAR_3: X.XX TL (%+8-12)",
+        "stop_loss": "STOP: X.XX TL (Açıklama)"
       },
-      "technical": "Teknik analiz detaylari (1-2 cumle)",
-      "overnight": "Overnight risk ve gap tahmini (1-2 cumle)",
-      "proTrader": "Pro trader perspektifi (1-2 cumle)"
+      "technical": "Destek-Direnç: Kısa dönem destek: X.XX TL, Orta dönem destek: X.XX TL, Direnç: X.XX TL. Pattern: [Pattern adı]. Fibonacci: [Seviyeleri]. Pivot: [Seviyeleri]",
+      "overnight": "Sabah yeşil olasılığı: %X (Tarihsel %Y). Gap up beklentisi: %Z. Gap down riski: %A. Gece düşüş riski: %B. Haftalık trend: [Trend]. Overnight bloklar: [Aktivite seviyesi]",
+      "proTrader": "Smart money: [Alış/Satış durumu %]. Kurumsal katılım: %X derece. Block trades: [Aktivite]. Options flow: [Sinyal]. Akıllı para hareketi: [Hareket]. Short covering: %Y olasılıkla beklenir"
     }
   ],
-  "ranking": ["BEST_SYMBOL", "2ND", "3RD", "4TH", "WORST_SYMBOL"],
-  "marketOutlook": "Genel piyasa gorunumu (max 30 kelime)",
-  "disclaimer": "Bu bir yatirim tavsiyesi degildir, sadece teknik analizdir."
-}`;
+  "ranking": ["EN_İYİ", "2.SİRA", "3.SİRA", "4.SİRA", "5.SİRA"],
+  "marketOutlook": "Genel BIST trendi [Trend]. Overnight riski [Seviye]. Sektör duyarlılığı [Yön]. Koruma alması gereken seviye: X.XXX",
+  "disclaimer": "Bu bir yatırım tavsiyesi değildir, sadece teknik analiz amaçlıdır."
+}
+
+=== ÖNEMLİ HATIRLATMALAR ===
+1. HER YANIT DETAYLI, SOMUT VERILER VE YÜZDE İLE DESTEKLENMEŞ OLMALI
+2. 35 İNDİKATÖRÜN HEPSİNİ DÜŞÜNEREk ANALİZ YAP
+3. SINYAL, RISK, HEDEF, TEKNİK HER BİR BÖLÜMDE MİNİMUM 5-6 DETAY OLMALI
+4. POZİSYON MIKTARI AÇIKLANMIŞ OLMALI
+5. TÜM YÜZDE VE SEVİYELER SPESİFİK OLMALI (Kesinlikle)
+6. JSON FORMATINDA HATALI OLMAMALI, PARSE EDİLEBİLİR OLMALI`;
 
     const completion = await groq.chat.completions.create({
       messages: [

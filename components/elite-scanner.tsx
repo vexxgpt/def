@@ -93,7 +93,9 @@ export function EliteScanner() {
       riskAnalysis: string;
       targets: {
         buy: string;
-        take_profit: string;
+        take_profit_1?: string;
+        take_profit_2?: string;
+        take_profit_3?: string;
         stop_loss: string;
       };
       technical: string;
@@ -653,61 +655,96 @@ export function EliteScanner() {
                             </div>
                           </div>
 
-                          {/* Detayli Analiz */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                            <div>
-                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Genel Bakis</span>
-                              <p className="text-xs text-foreground">{analysis.genel}</p>
-                            </div>
-                            
-                            <div>
-                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Sinyaller</span>
-                              <ul className="text-xs text-foreground space-y-0.5">
-                                {analysis.signals?.slice(0, 2).map((signal, i) => (
-                                  <li key={i}>✓ {signal}</li>
-                                ))}
-                              </ul>
-                            </div>
-                            
-                            <div>
-                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Risk Analizi</span>
-                              <p className="text-xs text-foreground">{analysis.riskAnalysis}</p>
-                            </div>
-                            
-                            <div>
-                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Teknik Analiz</span>
-                              <p className="text-xs text-foreground">{analysis.technical}</p>
-                            </div>
+                          {/* GENEL BAKIS */}
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                              <Eye className="h-3.5 w-3.5" /> Genel Bakis
+                            </span>
+                            <p className="text-xs text-foreground leading-relaxed">{analysis.genel}</p>
                           </div>
 
-                          {/* Hedefler */}
+                          {/* SINYALLER - DETAYLI */}
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                              <Zap className="h-3.5 w-3.5" /> Sinyaller (5-6 Ayrı Sinyal)
+                            </span>
+                            <ul className="text-xs text-foreground space-y-1.5">
+                              {analysis.signals?.map((signal, i) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                                  <span>{signal}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* RISK ANALIZI - DETAYLI */}
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                              <AlertTriangle className="h-3.5 w-3.5" /> Risk Analizi (Detayli)
+                            </span>
+                            <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{analysis.riskAnalysis}</div>
+                          </div>
+
+                          {/* HEDEFLER - DETAYLI */}
                           {analysis.targets && (
-                            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50 text-xs">
-                              <div className="text-center">
-                                <span className="text-muted-foreground block">AL</span>
-                                <p className="font-semibold text-primary">{analysis.targets.buy}</p>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-muted-foreground block">KAR SATIS</span>
-                                <p className="font-semibold text-chart-2">{analysis.targets.take_profit}</p>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-muted-foreground block">STOP</span>
-                                <p className="font-semibold text-destructive">{analysis.targets.stop_loss}</p>
+                            <div className="mt-3 pt-3 border-t border-border/50">
+                              <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                                <Target className="h-3.5 w-3.5" /> Hedefler (AL/KAR/STOP)
+                              </span>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                <div className="p-2 rounded bg-primary/10 border border-primary/20">
+                                  <span className="text-muted-foreground block text-xs">AL</span>
+                                  <p className="font-semibold text-primary">{analysis.targets.buy}</p>
+                                </div>
+                                {analysis.targets.take_profit_1 && (
+                                  <div className="p-2 rounded bg-chart-2/10 border border-chart-2/20">
+                                    <span className="text-muted-foreground block text-xs">KAR 1</span>
+                                    <p className="font-semibold text-chart-2">{analysis.targets.take_profit_1}</p>
+                                  </div>
+                                )}
+                                {analysis.targets.take_profit_2 && (
+                                  <div className="p-2 rounded bg-chart-2/10 border border-chart-2/20">
+                                    <span className="text-muted-foreground block text-xs">KAR 2</span>
+                                    <p className="font-semibold text-chart-2">{analysis.targets.take_profit_2}</p>
+                                  </div>
+                                )}
+                                {analysis.targets.take_profit_3 && (
+                                  <div className="p-2 rounded bg-chart-2/10 border border-chart-2/20">
+                                    <span className="text-muted-foreground block text-xs">KAR 3</span>
+                                    <p className="font-semibold text-chart-2">{analysis.targets.take_profit_3}</p>
+                                  </div>
+                                )}
+                                <div className="p-2 rounded bg-destructive/10 border border-destructive/20">
+                                  <span className="text-muted-foreground block text-xs">STOP</span>
+                                  <p className="font-semibold text-destructive">{analysis.targets.stop_loss}</p>
+                                </div>
                               </div>
                             </div>
                           )}
 
-                          {/* Overnight & Pro Trader */}
-                          <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-xs">
-                            <div>
-                              <span className="font-semibold text-muted-foreground">Overnight: </span>
-                              <span className="text-foreground">{analysis.overnight}</span>
-                            </div>
-                            <div>
-                              <span className="font-semibold text-muted-foreground">Pro Trader: </span>
-                              <span className="text-foreground">{analysis.proTrader}</span>
-                            </div>
+                          {/* TEKNIK ANALIZ */}
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                              <LineChart className="h-3.5 w-3.5" /> Teknik Analiz (Destek/Direnç)
+                            </span>
+                            <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{analysis.technical}</div>
+                          </div>
+
+                          {/* OVERNIGHT RİSK */}
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                              <Moon className="h-3.5 w-3.5" /> Overnight Risk (Gap Analizi)
+                            </span>
+                            <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{analysis.overnight}</div>
+                          </div>
+
+                          {/* PRO TRADER PERSPEKTIFI */}
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="font-semibold text-xs text-muted-foreground block mb-2 flex items-center gap-1">
+                              <Brain className="h-3.5 w-3.5" /> Pro Trader Perspektifi (Smart Money)
+                            </span>
+                            <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{analysis.proTrader}</div>
                           </div>
                         </div>
                       );
