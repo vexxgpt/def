@@ -7,11 +7,18 @@ import type {
   EliteRiskAnalysis, 
   EliteTargetAnalysis,
   EliteScanResult,
+  HistoricalBar,
   RISK_THRESHOLDS,
   POSITION_SIZING
 } from './elite-scanner-types';
 import { summarizeSignals } from './elite-signal-engine';
 import { findSector } from './bist-stocks';
+import { 
+  analyzeMorningGreen, 
+  analyzeGap, 
+  detectMomentumSurge, 
+  analyzeSmartMoney 
+} from './morning-green-analyzer';
 
 const RISK_LIMITS = {
   MAX_VOLATILITY_ATR_PERCENT: 5,
@@ -697,6 +704,7 @@ interface EliteScanInput {
   fiftyTwoWeekLow: number;
   indicators: EliteTechnicalIndicators;
   signals: EliteSignal[];
+  bars?: HistoricalBar[]; // Tarihsel veri - sabah yesil analizi icin
 }
 
 export function generateEliteScanResult(input: EliteScanInput): EliteScanResult {
@@ -732,6 +740,13 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
   const dataQuality = input.indicators.volume.sma20 > 0 ? 
     (input.indicators.volume.ratio > 0.3 ? 'excellent' : 'good') : 'fair';
   
+  // PRO ANALIZLER - SABAH YESIL YAKMA
+  const bars = input.bars || [];
+  const morningGreen = analyzeMorningGreen(bars, input.currentPrice);
+  const gapAnalysis = analyzeGap(bars, input.currentPrice);
+  const momentumSurge = detectMomentumSurge(bars, input.currentPrice, input.volume);
+  const smartMoney = analyzeSmartMoney(bars, input.volume);
+  
   return {
     symbol: input.symbol,
     name: input.name,
@@ -766,6 +781,12 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
     
     lastUpdated: new Date(),
     dataQuality,
+    
+    // PRO OZELLIKLER
+    morningGreen,
+    gapAnalysis,
+    momentumSurge,
+    smartMoney,
   };
 }
 
@@ -984,18 +1005,41 @@ export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[
 }
 
 // Pro Trader filtreleme - TOP 5 icin (kademeli)
+// SABAH YESIL YAKMA SKORU DAHIL
 export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
-  // Tum sonuclara kompozit skor ekle
-  const scoredResults = results.map(r => ({
-    ...r,
-    compositeScore: calculateCompositeScore(r),
-    signalStrength: calculateSignalStrength(r),
-  }));
+  // Tum sonuclara kompozit skor ve sabah yesil skoru ekle
+  const scoredResults = results.map(r => {
+    const compositeScore = calculateCompositeScore(r);
+    const signalStrength = calculateSignalStrength(r);
+    const morningGreenScore = r.morningGreen?.morningGreenScore || 50;
+    
+    // MASTER SKOR: Kompozit + Sabah Yesil + Sinyal Gucu
+    // Sabah yesil yakma icin optimize edilmis agirliklar
+    const masterScore = Math.round(
+      compositeScore * 0.35 +           // %35 teknik skor
+      morningGreenScore * 0.40 +        // %40 sabah yesil skoru (EN ONEMLI!)
+      signalStrength.strength * 0.25    // %25 sinyal gucu
+    );
+    
+    return {
+      ...r,
+      compositeScore,
+      signalStrength,
+      masterScore,
+    };
+  });
   
-  // Kompozit skora gore sirala
-  scoredResults.sort((a, b) => b.compositeScore - a.compositeScore);
+  // MASTER SKOR'a gore sirala (sabah yesil oncelikli)
+  scoredResults.sort((a, b) => {
+    // Oncelik 1: Morning Green skoru yuksek olanlar
+    const morningDiff = (b.morningGreen?.morningGreenScore || 0) - (a.morningGreen?.morningGreenScore || 0);
+    if (Math.abs(morningDiff) > 15) return morningDiff;
+    
+    // Oncelik 2: Master skor
+    return (b as typeof b & {masterScore: number}).masterScore - (a as typeof a & {masterScore: number}).masterScore;
+  });
   
-  // Minimum kriterler (daha gevşek)
+  // Minimum kriterler
   const filtered = scoredResults.filter(r => {
     // Deal breaker yok
     if (r.risk.dealBreakers.length > 0) return false;
@@ -1003,17 +1047,14 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     // AVOID ve SELL disinda
     if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
     
-    // Minimum kompozit skor 45
-    if (r.compositeScore < 45) return false;
+    // Minimum kompozit skor 40
+    if (r.compositeScore < 40) return false;
     
-    // Sinyal gucu NOTR veya ustu (strength >= 45)
-    if (r.signalStrength.strength < 45) return false;
+    // Sinyal gucu en az 40
+    if (r.signalStrength.strength < 40) return false;
     
     // Risk extreme veya very_high olmamali
     if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
-    
-    // En az 1 buy kategorisinde sinyal
-    if (r.signalSummary.strongBuyCount + r.signalSummary.buyCount < 1) return false;
     
     return true;
   });
@@ -1023,7 +1064,7 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     const relaxedFiltered = scoredResults.filter(r => {
       if (r.risk.dealBreakers.length > 0) return false;
       if (r.decision.action === 'AVOID') return false;
-      if (r.compositeScore < 35) return false;
+      if (r.compositeScore < 30) return false;
       if (r.risk.level === 'extreme') return false;
       return true;
     });

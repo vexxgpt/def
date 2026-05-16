@@ -531,9 +531,45 @@ export function EliteScanner() {
                                 <span className="text-xs text-muted-foreground">
                                   Skor: <span className="font-semibold text-foreground">{stock.compositeScore}</span>/100
                                 </span>
+                                {stock.morningGreen && (
+                                  <Badge variant="outline" className={`text-xs px-1.5 py-0.5 ${
+                                    stock.morningGreen.morningGreenScore >= 70 
+                                      ? 'bg-primary/20 text-primary border-primary/40' 
+                                      : stock.morningGreen.morningGreenScore >= 50
+                                      ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                      : 'bg-chart-4/20 text-chart-4 border-chart-4/40'
+                                  }`}>
+                                    Sabah: {stock.morningGreen.morningGreenScore}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Sabah Yesil Ozet */}
+                            {stock.morningGreen && (
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                 <span className="text-xs text-muted-foreground">
-                                  ({stock.signalStrength.summary.buy}A/{stock.signalStrength.summary.neutral}N/{stock.signalStrength.summary.sell}S)
+                                  Son 5g: <span className={`font-semibold ${stock.morningGreen.stats.greenMornings5d >= 3 ? 'text-primary' : 'text-chart-4'}`}>
+                                    {stock.morningGreen.stats.greenMornings5d}/5 yesil
+                                  </span>
                                 </span>
+                                {stock.morningGreen.patterns.isHotStreak && (
+                                  <Badge variant="outline" className="text-xs px-1 py-0 bg-amber-500/20 text-amber-500 border-amber-500/40 animate-pulse">
+                                    HOT STREAK!
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className={`text-xs px-1.5 py-0 ${
+                                  stock.morningGreen.strategy.recommendation === 'STRONG_MORNING_BUY'
+                                    ? 'bg-primary/20 text-primary border-primary/40'
+                                    : stock.morningGreen.strategy.recommendation === 'MORNING_BUY'
+                                    ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                    : 'bg-muted text-muted-foreground border-border'
+                                }`}>
+                                  {stock.morningGreen.strategy.recommendation === 'STRONG_MORNING_BUY' ? 'SABAH AL!' :
+                                   stock.morningGreen.strategy.recommendation === 'MORNING_BUY' ? 'Sabah Firsati' :
+                                   stock.morningGreen.strategy.recommendation === 'WAIT_FOR_DIP' ? 'Dip Bekle' :
+                                   stock.morningGreen.strategy.recommendation === 'AVOID_MORNING' ? 'Sabah Kacin' : 'Short Adayi'}
+                                </Badge>
                               </div>
                             )}
                             {!stock.signalStrength && stock.decision.proAnalysis && (
