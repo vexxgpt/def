@@ -706,20 +706,75 @@ export function sortEliteResults(results: EliteScanResult[]): EliteScanResult[] 
 
 export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[] {
   return results.filter(r => {
-    // Deal breaker olanlar disinda
+    // Deal breaker olanlar KESINLIKLE disinda
     if (r.risk.dealBreakers.length > 0) return false;
     
-    // AVOID ve SELL disinda
-    if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
+    // SADECE STRONG_BUY ve BUY - diger her sey disinda
+    if (r.decision.action !== 'STRONG_BUY' && r.decision.action !== 'BUY') return false;
     
-    // Minimum grade B
-    if (r.score.grade === 'C' || r.score.grade === 'D' || r.score.grade === 'F') return false;
+    // Minimum grade A veya B+ - daha dusuk KABUL EDILMEZ
+    if (r.score.grade !== 'A+' && r.score.grade !== 'A' && r.score.grade !== 'B+') return false;
     
-    // Minimum conviction %40
-    if (r.decision.conviction < 40) return false;
+    // MINIMUM %85 GUVEN - %50 guven ile islem YAPILMAZ
+    if (r.decision.conviction < 85) return false;
     
-    // Risk cok yuksek olmasin
-    if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
+    // Risk SADECE low veya very_low KABUL EDILIR - medium bile riskli
+    if (r.risk.level !== 'low' && r.risk.level !== 'very_low') return false;
+    
+    // MINIMUM 5 alim sinyali olmali
+    if ((r.signalSummary.strongBuyCount + r.signalSummary.buyCount) < 5) return false;
+    
+    // Trend MUTLAKA yukari olmali
+    if (r.indicators.dailyTrend === 'down') return false;
+    
+    // MINIMUM Risk/Odul orani 2:1
+    if (r.target.riskRewardRatios.conservative < 2) return false;
+    
+    // MINIMUM likidite - 1M TL pozisyon icin en az 2M TL gunluk hacim
+    const dailyValue = r.volume.current * r.price.current;
+    if (dailyValue < 2000000) return false;
+    
+    return true;
+  });
+}
+
+// Ultra-siki filtre - sadece EN KESIN firsatlar
+export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
+  return results.filter(r => {
+    // Temel filtreler
+    if (r.risk.dealBreakers.length > 0) return false;
+    if (r.decision.action !== 'STRONG_BUY' && r.decision.action !== 'BUY') return false;
+    
+    // MINIMUM %90 GUVEN
+    if (r.decision.conviction < 90) return false;
+    
+    // Sadece A+ veya A grade
+    if (r.score.grade !== 'A+' && r.score.grade !== 'A') return false;
+    
+    // Risk SADECE very_low veya low
+    if (r.risk.level !== 'very_low' && r.risk.level !== 'low') return false;
+    
+    // EN AZ 3 GUCLU ALIM sinyali
+    if (r.signalSummary.strongBuyCount < 3) return false;
+    
+    // EN AZ 7 toplam alim sinyali
+    if ((r.signalSummary.strongBuyCount + r.signalSummary.buyCount) < 7) return false;
+    
+    // SIFIR satis sinyali
+    if (r.signalSummary.sellCount > 0 || r.signalSummary.strongSellCount > 0) return false;
+    
+    // Hem gunluk hem haftalik trend yukari
+    if (r.indicators.dailyTrend !== 'up' || r.indicators.weeklyTrend !== 'up') return false;
+    
+    // EMA alignment pozitif olmali
+    if (r.indicators.ema.alignment !== 'perfect_bullish' && r.indicators.ema.alignment !== 'bullish') return false;
+    
+    // MINIMUM Risk/Odul orani 2.5:1
+    if (r.target.riskRewardRatios.conservative < 2.5) return false;
+    
+    // MINIMUM 5M TL gunluk hacim (1M TL pozisyon icin guvende olmak icin)
+    const dailyValue = r.volume.current * r.price.current;
+    if (dailyValue < 5000000) return false;
     
     return true;
   });
