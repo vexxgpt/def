@@ -202,8 +202,11 @@ export function calculateWeeklyMorningScore(bars: HistoricalBar[]): WeeklyMornin
     const morningCandle = getCandle(currentBar);
     const morningGap = ((currentBar.open - prevBar.close) / prevBar.close) * 100;
     
+    // Date objesine cevir (string veya Date olabilir)
+    const barDate = currentBar.date instanceof Date ? currentBar.date : new Date(currentBar.date);
+    
     const session: OvernightSession = {
-      date: currentBar.date.toISOString().split('T')[0],
+      date: barDate.toISOString().split('T')[0],
       eveningClose: prevBar.close,
       eveningHigh: prevBar.high,
       eveningLow: prevBar.low,
