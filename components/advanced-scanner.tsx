@@ -184,8 +184,14 @@ export function AdvancedScanner() {
             const targetPrice = stock.price * 1.01;
             const expectedGain = 1;
 
-            // Güven hesaplaması
-            const confidence = Math.min(95, Math.max(30, score + (Math.random() * 10 - 5)));
+            // Guven hesaplamasi - GERCEK TEKNIK VERILERDEN (RANDOM DEGIL!)
+            // Sinyal sayisi, hacim orani ve trend uyumuna gore hesapla
+            const bullishSignals = signals.filter(s => s.type === 'buy').length;
+            const totalSignals = signals.length;
+            const signalRatio = totalSignals > 0 ? (bullishSignals / totalSignals) * 100 : 50;
+            const volumeBonus = technicals.volumeRatio > 1.5 ? 10 : technicals.volumeRatio > 1 ? 5 : 0;
+            const trendBonus = technicals.trend === 'yukari' ? 10 : technicals.trend === 'asagi' ? -10 : 0;
+            const confidence = Math.min(95, Math.max(30, score * 0.5 + signalRatio * 0.3 + volumeBonus + trendBonus));
 
             allResults.push({
               symbol: stock.symbol,
