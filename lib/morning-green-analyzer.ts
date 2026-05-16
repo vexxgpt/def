@@ -28,8 +28,11 @@ export function analyzeMorningGreen(bars: HistoricalBar[], currentPrice: number)
     const closedGreen = bar.close > bar.open; // Gun yesil kapandi
     const afternoonReversal = bar.close < prevBar.close && bar.open > prevBar.close; // Sabah yesil, aksam kirmizi
     
+    // Date objesine cevir (string veya Date olabilir)
+    const barDate = bar.date instanceof Date ? bar.date : new Date(bar.date);
+    
     last5Days.push({
-      date: bar.date.toISOString().split('T')[0],
+      date: barDate.toISOString().split('T')[0],
       prevClose: prevBar.close,
       open: bar.open,
       gapPercent: Math.round(gapPercent * 100) / 100,
