@@ -157,6 +157,7 @@ export function EliteScanner() {
                   fiftyTwoWeekLow: stockData.currentQuote.fiftyTwoWeekLow || Math.min(...stockData.bars.map(b => b.low)),
                   indicators,
                   signals,
+                  bars: stockData.bars, // GERCEK TARIHSEL VERI - OVERNIGHT ANALIZI ICIN
                 });
 
                 results.push(result);
@@ -534,44 +535,65 @@ export function EliteScanner() {
                                 <span className="text-xs text-muted-foreground">
                                   Skor: <span className="font-semibold text-foreground">{stock.compositeScore}</span>/100
                                 </span>
-                                {stock.morningGreen && (
+                                {stock.overnightAnalysis && (
                                   <Badge variant="outline" className={`text-xs px-1.5 py-0.5 ${
-                                    stock.morningGreen.morningGreenScore >= 70 
+                                    stock.overnightAnalysis.weeklyScore >= 70 
                                       ? 'bg-primary/20 text-primary border-primary/40' 
-                                      : stock.morningGreen.morningGreenScore >= 50
+                                      : stock.overnightAnalysis.weeklyScore >= 50
                                       ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
                                       : 'bg-chart-4/20 text-chart-4 border-chart-4/40'
                                   }`}>
-                                    Sabah: {stock.morningGreen.morningGreenScore}
+                                    Sabah: {stock.overnightAnalysis.weeklyScore}
                                   </Badge>
                                 )}
                               </div>
                             )}
                             
-                            {/* Sabah Yesil Ozet */}
-                            {stock.morningGreen && (
+                            {/* OVERNIGHT ANALIZI - GERCEK VERI */}
+                            {stock.overnightAnalysis && (
                               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                 <span className="text-xs text-muted-foreground">
-                                  Son 5g: <span className={`font-semibold ${stock.morningGreen.stats.greenMornings5d >= 3 ? 'text-primary' : 'text-chart-4'}`}>
-                                    {stock.morningGreen.stats.greenMornings5d}/5 yesil
+                                  Son 5g: <span className={`font-semibold ${stock.overnightAnalysis.overallMorningGreenRate >= 60 ? 'text-primary' : 'text-chart-4'}`}>
+                                    {Math.round(stock.overnightAnalysis.overallMorningGreenRate / 20)}/5 yesil
                                   </span>
                                 </span>
-                                {stock.morningGreen.patterns.isHotStreak && (
+                                {stock.ultraEliteScore && stock.ultraEliteScore >= 70 && (
                                   <Badge variant="outline" className="text-xs px-1 py-0 bg-amber-500/20 text-amber-500 border-amber-500/40 animate-pulse">
-                                    HOT STREAK!
+                                    ULTRA-ELITE!
                                   </Badge>
                                 )}
                                 <Badge variant="outline" className={`text-xs px-1.5 py-0 ${
-                                  stock.morningGreen.strategy.recommendation === 'STRONG_MORNING_BUY'
+                                  stock.overnightAnalysis.strategy.eveningAction === 'BUY_BEFORE_CLOSE'
                                     ? 'bg-primary/20 text-primary border-primary/40'
-                                    : stock.morningGreen.strategy.recommendation === 'MORNING_BUY'
+                                    : stock.overnightAnalysis.strategy.morningAction === 'BUY_AT_OPEN'
                                     ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                    : stock.overnightAnalysis.strategy.morningAction === 'BUY_ON_DIP'
+                                    ? 'bg-chart-4/20 text-chart-4 border-chart-4/40'
                                     : 'bg-muted text-muted-foreground border-border'
                                 }`}>
-                                  {stock.morningGreen.strategy.recommendation === 'STRONG_MORNING_BUY' ? 'SABAH AL!' :
-                                   stock.morningGreen.strategy.recommendation === 'MORNING_BUY' ? 'Sabah Firsati' :
-                                   stock.morningGreen.strategy.recommendation === 'WAIT_FOR_DIP' ? 'Dip Bekle' :
-                                   stock.morningGreen.strategy.recommendation === 'AVOID_MORNING' ? 'Sabah Kacin' : 'Short Adayi'}
+                                  {stock.overnightAnalysis.strategy.eveningAction === 'BUY_BEFORE_CLOSE' ? 'AKSAM AL!' :
+                                   stock.overnightAnalysis.strategy.morningAction === 'BUY_AT_OPEN' ? 'Acilista Al' :
+                                   stock.overnightAnalysis.strategy.morningAction === 'BUY_ON_DIP' ? 'Dip Bekle' :
+                                   stock.overnightAnalysis.strategy.morningAction === 'SELL_AT_OPEN' ? 'Acilista Sat' : 'Izle'}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Guven: <span className={`font-semibold ${
+                                    stock.overnightAnalysis.confidenceLevel === 'very_high' ? 'text-primary' :
+                                    stock.overnightAnalysis.confidenceLevel === 'high' ? 'text-chart-2' : 'text-chart-4'
+                                  }`}>
+                                    {stock.overnightAnalysis.confidenceLevel === 'very_high' ? 'Cok Yuksek' :
+                                     stock.overnightAnalysis.confidenceLevel === 'high' ? 'Yuksek' :
+                                     stock.overnightAnalysis.confidenceLevel === 'medium' ? 'Orta' :
+                                     stock.overnightAnalysis.confidenceLevel === 'low' ? 'Dusuk' : 'Cok Dusuk'}
+                                  </span>
+                                </span>
+                              </div>
+                            )}
+                            {/* Veri yoksa uyari */}
+                            {!stock.overnightAnalysis && (
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <Badge variant="outline" className="text-xs px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30">
+                                  Overnight Veri Yok
                                 </Badge>
                               </div>
                             )}

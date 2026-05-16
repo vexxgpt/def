@@ -19,6 +19,11 @@ import {
   detectMomentumSurge, 
   analyzeSmartMoney 
 } from './morning-green-analyzer';
+import { 
+  analyzeOvernightSession,
+  calculateWeeklyMorningScore,
+  type OvernightAnalysis
+} from './overnight-analyzer';
 
 const RISK_LIMITS = {
   MAX_VOLATILITY_ATR_PERCENT: 5,
@@ -747,6 +752,57 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
   const momentumSurge = detectMomentumSurge(bars, input.currentPrice, input.volume);
   const smartMoney = analyzeSmartMoney(bars, input.volume);
   
+  // OVERNIGHT ANALIZI - GERCEK VERI ILE HESAPLA
+  let overnightAnalysisData: EliteScanResult['overnightAnalysis'] | undefined;
+  let ultraEliteScore: number | undefined;
+  let isUltraElite = false;
+  
+  if (bars.length >= 10) {
+    // Gercek overnight analizi hesapla
+    const fullOvernightAnalysis = analyzeOvernightSession(bars, input.currentPrice, input.previousClose);
+    const weeklyScore = fullOvernightAnalysis.historicalPattern;
+    
+    overnightAnalysisData = {
+      weeklyScore: weeklyScore.weeklyScore,
+      eveningGreenSuccessRate: weeklyScore.patterns.eveningGreenSuccessRate,
+      eveningRedRecoveryRate: weeklyScore.patterns.eveningRedRecoveryRate,
+      overallMorningGreenRate: weeklyScore.patterns.overallMorningGreenRate,
+      patternConsistency: weeklyScore.reliability.patternConsistency,
+      confidenceLevel: weeklyScore.reliability.confidenceLevel,
+      prediction: {
+        nextMorningDirection: weeklyScore.prediction.nextMorningDirection,
+        probability: weeklyScore.prediction.probability,
+        expectedGap: fullOvernightAnalysis.morningPrediction.expectedGap,
+      },
+      overnightRisk: {
+        score: fullOvernightAnalysis.overnightRisk.score,
+        recommendation: fullOvernightAnalysis.overnightRisk.recommendation,
+      },
+      strategy: {
+        eveningAction: fullOvernightAnalysis.strategy.eveningAction,
+        morningAction: fullOvernightAnalysis.strategy.morningAction,
+      },
+    };
+    
+    // ULTRA-ELITE SKORU HESAPLA
+    // Sabah Yesil + Teknik + Overnight guvenilirlik
+    ultraEliteScore = Math.round(
+      (morningGreen.morningGreenScore || 50) * 0.30 +
+      score.overall * 0.25 +
+      weeklyScore.weeklyScore * 0.25 +
+      weeklyScore.reliability.patternConsistency * 0.20
+    );
+    
+    // Ultra-Elite kriterleri
+    isUltraElite = 
+      ultraEliteScore >= 70 &&
+      weeklyScore.patterns.overallMorningGreenRate >= 60 &&
+      weeklyScore.reliability.confidenceLevel !== 'low' &&
+      weeklyScore.reliability.confidenceLevel !== 'very_low' &&
+      risk.level !== 'extreme' &&
+      risk.level !== 'very_high';
+  }
+  
   return {
     symbol: input.symbol,
     name: input.name,
@@ -787,6 +843,11 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
     gapAnalysis,
     momentumSurge,
     smartMoney,
+    
+    // OVERNIGHT ANALIZI - GERCEK VERI
+    overnightAnalysis: overnightAnalysisData,
+    ultraEliteScore,
+    isUltraElite,
   };
 }
 
@@ -1005,20 +1066,23 @@ export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[
 }
 
 // Pro Trader filtreleme - TOP 5 icin (kademeli)
-// SABAH YESIL YAKMA SKORU DAHIL
+// SABAH YESIL YAKMA + OVERNIGHT ANALIZI DAHIL
 export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
   // Tum sonuclara kompozit skor ve sabah yesil skoru ekle
   const scoredResults = results.map(r => {
     const compositeScore = calculateCompositeScore(r);
     const signalStrength = calculateSignalStrength(r);
     const morningGreenScore = r.morningGreen?.morningGreenScore || 50;
+    const overnightScore = r.overnightAnalysis?.weeklyScore || 50;
+    const overallMorningGreenRate = r.overnightAnalysis?.overallMorningGreenRate || 50;
     
-    // MASTER SKOR: Kompozit + Sabah Yesil + Sinyal Gucu
-    // Sabah yesil yakma icin optimize edilmis agirliklar
+    // MASTER SKOR: Kompozit + Sabah Yesil + Overnight + Sinyal Gucu
+    // Sabah yesil yakma ve overnight icin optimize edilmis agirliklar
     const masterScore = Math.round(
-      compositeScore * 0.35 +           // %35 teknik skor
-      morningGreenScore * 0.40 +        // %40 sabah yesil skoru (EN ONEMLI!)
-      signalStrength.strength * 0.25    // %25 sinyal gucu
+      compositeScore * 0.25 +           // %25 teknik skor
+      morningGreenScore * 0.30 +        // %30 sabah yesil skoru (EN ONEMLI!)
+      overnightScore * 0.25 +           // %25 overnight skoru
+      signalStrength.strength * 0.20    // %20 sinyal gucu
     );
     
     return {
@@ -1026,20 +1090,30 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
       compositeScore,
       signalStrength,
       masterScore,
+      calculatedUltraEliteScore: r.ultraEliteScore || masterScore,
     };
   });
   
-  // MASTER SKOR'a gore sirala (sabah yesil oncelikli)
+  // MASTER SKOR'a gore sirala (sabah yesil + overnight oncelikli)
   scoredResults.sort((a, b) => {
-    // Oncelik 1: Morning Green skoru yuksek olanlar
+    // Oncelik 1: Ultra-Elite olanlar
+    if (a.isUltraElite !== b.isUltraElite) {
+      return a.isUltraElite ? -1 : 1;
+    }
+    
+    // Oncelik 2: Overnight sabah yesil orani
+    const morningRateDiff = (b.overnightAnalysis?.overallMorningGreenRate || 0) - (a.overnightAnalysis?.overallMorningGreenRate || 0);
+    if (Math.abs(morningRateDiff) > 15) return morningRateDiff;
+    
+    // Oncelik 3: Morning Green skoru
     const morningDiff = (b.morningGreen?.morningGreenScore || 0) - (a.morningGreen?.morningGreenScore || 0);
     if (Math.abs(morningDiff) > 15) return morningDiff;
     
-    // Oncelik 2: Master skor
+    // Oncelik 4: Master skor
     return (b as typeof b & {masterScore: number}).masterScore - (a as typeof a & {masterScore: number}).masterScore;
   });
   
-  // Minimum kriterler
+  // Minimum kriterler - GERCEK VERI GEREKLILIGI
   const filtered = scoredResults.filter(r => {
     // Deal breaker yok
     if (r.risk.dealBreakers.length > 0) return false;
@@ -1056,16 +1130,21 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     // Risk extreme veya very_high olmamali
     if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
     
+    // OVERNIGHT VERI GEREKLI - Sahte veri kullanilmayacak
+    if (!r.overnightAnalysis) return false;
+    
     return true;
   });
   
-  // Eger yeterli sonuc yoksa, kriterleri gevset
+  // Eger yeterli sonuc yoksa, kriterleri gevset ama yine de gercek veri gerek
   if (filtered.length < 5) {
     const relaxedFiltered = scoredResults.filter(r => {
       if (r.risk.dealBreakers.length > 0) return false;
       if (r.decision.action === 'AVOID') return false;
       if (r.compositeScore < 30) return false;
       if (r.risk.level === 'extreme') return false;
+      // Overnight verisi olmali
+      if (!r.overnightAnalysis) return false;
       return true;
     });
     return relaxedFiltered.slice(0, 5);
