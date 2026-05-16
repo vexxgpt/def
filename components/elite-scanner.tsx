@@ -353,6 +353,80 @@ export function EliteScanner() {
     }
   };
 
+  // Turkce ceviri fonksiyonlari
+  const translateAction = (action: string) => {
+    const translations: Record<string, string> = {
+      'STRONG_BUY': 'GUCLU AL',
+      'BUY': 'AL',
+      'HOLD': 'TUT',
+      'SELL': 'SAT',
+      'AVOID': 'KACINILMALI',
+      'NEUTRAL': 'NOTR'
+    };
+    return translations[action] || action;
+  };
+
+  const translateTrend = (trend: string) => {
+    const translations: Record<string, string> = {
+      'perfect_bullish': 'MUKEMMEL YUKSELIS',
+      'bullish': 'YUKSELIS',
+      'bearish': 'DUSUS',
+      'perfect_bearish': 'MUKEMMEL DUSUS',
+      'neutral': 'NOTR',
+      'mixed': 'KARISIK',
+      'rising': 'YUKSELIYOR',
+      'falling': 'DUSUYOR',
+      'flat': 'YATAY',
+      'up': 'YUKARI',
+      'down': 'ASAGI',
+      'sideways': 'YATAY'
+    };
+    return translations[trend] || trend;
+  };
+
+  const translateSignal = (signal: string) => {
+    const translations: Record<string, string> = {
+      'strong_accumulation': 'GUCLU BIRIKIM',
+      'accumulation': 'BIRIKIM',
+      'distribution': 'DAGITIM',
+      'strong_distribution': 'GUCLU DAGITIM',
+      'neutral': 'NOTR',
+      'buying': 'ALIYOR',
+      'selling': 'SATIYOR',
+      'heavy_buying': 'AGIR ALIM',
+      'heavy_selling': 'AGIR SATIM'
+    };
+    return translations[signal] || signal;
+  };
+
+  const translateRisk = (risk: string) => {
+    const translations: Record<string, string> = {
+      'very_low': 'COK DUSUK',
+      'low': 'DUSUK',
+      'medium': 'ORTA',
+      'high': 'YUKSEK',
+      'very_high': 'COK YUKSEK',
+      'extreme': 'ASIRI RISKLI'
+    };
+    return translations[risk] || risk;
+  };
+
+  const translateStrategy = (strategy: string) => {
+    const translations: Record<string, string> = {
+      'BUY_BEFORE_CLOSE': 'KAPANIS ONCESI AL',
+      'BUY_AT_OPEN': 'ACILISTA AL',
+      'BUY_ON_DIP': 'DIPTE AL',
+      'SELL_AT_OPEN': 'ACILISTA SAT',
+      'HOLD': 'TUT',
+      'WAIT': 'BEKLE',
+      'STRONG_MORNING_BUY': 'GUCLU SABAH ALIMI',
+      'MORNING_BUY': 'SABAH ALIMI',
+      'STRONG_BUY_TONIGHT': 'AKSAM GUCLU AL',
+      'BUY_TONIGHT': 'AKSAM AL'
+    };
+    return translations[strategy] || strategy;
+  };
+
   const getRiskColor = (level: string) => {
     switch (level) {
       case 'very_low': return 'bg-primary/20 text-primary border-primary/30';
@@ -994,7 +1068,7 @@ export function EliteScanner() {
                                   </Badge>
                                 )}
                                 <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                  Conf: {stock.decision.proAnalysis.confluenceScore}
+                                  Birlestirme: {stock.decision.proAnalysis.confluenceScore}
                                 </Badge>
                               </div>
                             )}
@@ -1022,7 +1096,7 @@ export function EliteScanner() {
                           </Badge>
                           <Badge variant="outline" className={`${getActionColor(selectedResult.decision.action)}`}>
                             {getActionIcon(selectedResult.decision.action)}
-                            <span className="ml-1 font-semibold">{selectedResult.decision.action.replace('_', ' ')}</span>
+                            <span className="ml-1 font-semibold">{translateAction(selectedResult.decision.action)}</span>
                           </Badge>
                           {/* TURKCE TAVSIYE BADGE - BUYUK */}
                           {(() => {
@@ -1073,7 +1147,7 @@ export function EliteScanner() {
                           <div className={`text-3xl font-bold ${getGradeColor(selectedResult.score.grade)}`}>
                             {selectedResult.score.grade}
                           </div>
-                          <p className="text-xs text-muted-foreground">Grade</p>
+                          <p className="text-xs text-muted-foreground">Derece</p>
                         </div>
                         <Separator orientation="vertical" className="h-12" />
                         <div className="text-right">
@@ -1253,7 +1327,7 @@ export function EliteScanner() {
                                 <div className="p-3 rounded-lg bg-card border border-border">
                                   <span className="text-xs text-muted-foreground">Minervini Template</span>
                                   <Badge className={`mt-1 ${selectedResult.proTraderCriteria?.minerviniTemplate.passed ? 'bg-primary' : 'bg-destructive'}`}>
-                                    {selectedResult.proTraderCriteria?.minerviniTemplate.passed ? 'PASSED' : 'FAILED'}
+                                    {selectedResult.proTraderCriteria?.minerviniTemplate.passed ? 'GECTI' : 'BASARISIZ'}
                                   </Badge>
                                 </div>
                                 
@@ -1266,7 +1340,7 @@ export function EliteScanner() {
                                       ? 'bg-destructive'
                                       : 'bg-muted'
                                   }`}>
-                                    {selectedResult.proTraderCriteria?.institutionalAccumulation.signal || 'N/A'}
+                                    {translateSignal(selectedResult.proTraderCriteria?.institutionalAccumulation.signal || 'neutral')}
                                   </Badge>
                                 </div>
                               </div>
@@ -1301,7 +1375,7 @@ export function EliteScanner() {
                                     selectedResult.indicators.ema.alignment === 'bearish' ? 'bg-destructive' :
                                     'bg-muted'
                                   }`}>
-                                    {selectedResult.indicators.ema.alignment}
+                                    {translateTrend(selectedResult.indicators.ema.alignment)}
                                   </Badge>
                                 </div>
                                 <div className="p-3 rounded-lg bg-card border border-border">
@@ -1311,7 +1385,7 @@ export function EliteScanner() {
                                     selectedResult.indicators.dailyTrend === 'down' ? 'bg-destructive' :
                                     'bg-muted'
                                   }`}>
-                                    {selectedResult.indicators.dailyTrend}
+                                    {translateTrend(selectedResult.indicators.dailyTrend)}
                                   </Badge>
                                 </div>
                                 <div className="p-3 rounded-lg bg-card border border-border">
@@ -1325,7 +1399,7 @@ export function EliteScanner() {
                                     selectedResult.indicators.obv.trend === 'falling' ? 'bg-destructive' :
                                     'bg-muted'
                                   }`}>
-                                    {selectedResult.indicators.obv.trend}
+                                    {translateTrend(selectedResult.indicators.obv.trend)}
                                   </Badge>
                                 </div>
                               </div>
@@ -1359,7 +1433,7 @@ export function EliteScanner() {
                                     selectedResult.overnightAnalysis?.strategy?.eveningAction === 'HOLD' ? 'bg-chart-4' :
                                     'bg-muted'
                                   }`}>
-                                    {selectedResult.overnightAnalysis?.strategy?.eveningAction || aiStockData?.recommendation?.replace('_', ' ') || 'BEKLE'}
+                                    {translateStrategy(selectedResult.overnightAnalysis?.strategy?.eveningAction || aiStockData?.recommendation || 'WAIT')}
                                   </Badge>
                                 </div>
                                 <div className="p-3 rounded-lg bg-card border border-border">
@@ -1369,7 +1443,7 @@ export function EliteScanner() {
                                     selectedResult.overnightAnalysis?.strategy?.morningAction === 'BUY_ON_DIP' ? 'bg-chart-2' :
                                     'bg-muted'
                                   }`}>
-                                    {selectedResult.overnightAnalysis?.strategy?.morningAction || 'BEKLE VE IZLE'}
+                                    {translateStrategy(selectedResult.overnightAnalysis?.strategy?.morningAction || 'WAIT')}
                                   </Badge>
                                 </div>
                               </div>
@@ -1949,7 +2023,7 @@ export function EliteScanner() {
                                 selectedResult.indicators.ema.alignment.includes('bearish') ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted'
                               }>
-                                {selectedResult.indicators.ema.alignment.replace('_', ' ')}
+                                {translateTrend(selectedResult.indicators.ema.alignment)}
                               </Badge>
                             </div>
                             <div>
@@ -1959,7 +2033,7 @@ export function EliteScanner() {
                                 selectedResult.indicators.dailyTrend === 'down' ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted'
                               }>
-                                {selectedResult.indicators.dailyTrend}
+                                {translateTrend(selectedResult.indicators.dailyTrend)}
                               </Badge>
                             </div>
                             <div>
@@ -1969,7 +2043,7 @@ export function EliteScanner() {
                                 selectedResult.indicators.weeklyTrend === 'down' ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted'
                               }>
-                                {selectedResult.indicators.weeklyTrend}
+                                {translateTrend(selectedResult.indicators.weeklyTrend)}
                               </Badge>
                             </div>
                             <div>
@@ -1979,7 +2053,10 @@ export function EliteScanner() {
                                 selectedResult.indicators.ichimoku.signal.includes('sell') ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted'
                               }>
-                                {selectedResult.indicators.ichimoku.signal.replace('_', ' ')}
+                                {selectedResult.indicators.ichimoku.signal.includes('strong_buy') ? 'GUCLU AL' :
+                                 selectedResult.indicators.ichimoku.signal.includes('buy') ? 'AL' :
+                                 selectedResult.indicators.ichimoku.signal.includes('strong_sell') ? 'GUCLU SAT' :
+                                 selectedResult.indicators.ichimoku.signal.includes('sell') ? 'SAT' : 'NOTR'}
                               </Badge>
                             </div>
                           </div>
@@ -2000,7 +2077,7 @@ export function EliteScanner() {
                                 selectedResult.indicators.obv.trend === 'falling' ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted'
                               }>
-                                {selectedResult.indicators.obv.trend}
+                                {translateTrend(selectedResult.indicators.obv.trend)}
                               </Badge>
                             </div>
                             <div>
@@ -2014,13 +2091,13 @@ export function EliteScanner() {
                               </div>
                             </div>
                             <div>
-                              <div className="text-xs text-muted-foreground mb-1">Acc/Dist</div>
+                              <div className="text-xs text-muted-foreground mb-1">Birikim/Dagitim</div>
                               <Badge variant="outline" className={
                                 selectedResult.indicators.accDist.trend === 'accumulation' ? 'bg-primary/20 text-primary' :
                                 selectedResult.indicators.accDist.trend === 'distribution' ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted'
                               }>
-                                {selectedResult.indicators.accDist.trend}
+                                {translateSignal(selectedResult.indicators.accDist.trend)}
                               </Badge>
                             </div>
                           </div>
