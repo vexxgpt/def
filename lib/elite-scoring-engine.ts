@@ -22,7 +22,9 @@ import {
 import { 
   analyzeOvernightSession,
   calculateWeeklyMorningScore,
-  type OvernightAnalysis
+  calculateProTraderCriteria,
+  type OvernightAnalysis,
+  type ProTraderCriteria
 } from './overnight-analyzer';
 
 const RISK_LIMITS = {
@@ -803,6 +805,34 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
       risk.level !== 'very_high';
   }
   
+  // PRO TRADER KRITERLERI - DUNYA STANDARTLARI
+  let proTraderCriteria: ProTraderCriteria | undefined;
+  
+  if (bars.length >= 50) {
+    proTraderCriteria = calculateProTraderCriteria(
+      bars,
+      input.currentPrice,
+      input.fiftyTwoWeekHigh,
+      input.fiftyTwoWeekLow,
+      0 // Market change - ileride BIST100 verisi eklenebilir
+    );
+    
+    // Ultra-Elite skoru pro kriterlerle guncelle
+    if (ultraEliteScore !== undefined && proTraderCriteria) {
+      // Pro kriterleri de dahil et
+      ultraEliteScore = Math.round(
+        ultraEliteScore * 0.6 + // Mevcut skor %60
+        proTraderCriteria.proScore * 0.4 // Pro skor %40
+      );
+      
+      // Ultra-Elite kriterlerini pro kriterlere gore guncelle
+      isUltraElite = isUltraElite && 
+        proTraderCriteria.proScore >= 50 &&
+        proTraderCriteria.proSignal !== 'AVOID' &&
+        proTraderCriteria.proSignal !== 'SHORT_CANDIDATE';
+    }
+  }
+  
   return {
     symbol: input.symbol,
     name: input.name,
@@ -848,6 +878,9 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
     overnightAnalysis: overnightAnalysisData,
     ultraEliteScore,
     isUltraElite,
+    
+    // PRO TRADER KRITERLERI - DUNYA STANDARTLARI
+    proTraderCriteria,
   };
 }
 
@@ -1066,7 +1099,7 @@ export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[
 }
 
 // Pro Trader filtreleme - TOP 5 icin (kademeli ve esnek)
-// SABAH YESIL YAKMA + OVERNIGHT ANALIZI DAHIL
+// SABAH YESIL YAKMA + OVERNIGHT ANALIZI + PRO TRADER KRITERLERI DAHIL
 // 610 hisseden EN AZ 5 TANE MUTLAKA CIKMALI - ESNEK KRITERLER
 export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
   // Tum sonuclara kompozit skor ve sabah yesil skoru ekle
@@ -1075,13 +1108,15 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     const signalStrength = calculateSignalStrength(r);
     const morningGreenScore = r.morningGreen?.morningGreenScore || 50;
     const overnightScore = r.overnightAnalysis?.weeklyScore || 50;
+    const proScore = r.proTraderCriteria?.proScore || 50;
     
-    // MASTER SKOR: Kompozit + Sabah Yesil + Overnight + Sinyal Gucu
+    // MASTER SKOR: Kompozit + Sabah Yesil + Overnight + Pro Trader + Sinyal Gucu
     const masterScore = Math.round(
-      compositeScore * 0.25 +           // %25 teknik skor
-      morningGreenScore * 0.30 +        // %30 sabah yesil skoru (EN ONEMLI!)
-      overnightScore * 0.25 +           // %25 overnight skoru
-      signalStrength.strength * 0.20    // %20 sinyal gucu
+      compositeScore * 0.15 +           // %15 teknik skor
+      morningGreenScore * 0.25 +        // %25 sabah yesil skoru (EN ONEMLI!)
+      overnightScore * 0.20 +           // %20 overnight skoru
+      proScore * 0.25 +                 // %25 PRO TRADER KRITERLERI (YENi!)
+      signalStrength.strength * 0.15   // %15 sinyal gucu
     );
     
     return {
@@ -1093,44 +1128,69 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     };
   });
   
-  // MASTER SKOR'a gore sirala (sabah yesil + overnight oncelikli)
+  // MASTER SKOR'a gore sirala (pro trader + sabah yesil + overnight oncelikli)
   scoredResults.sort((a, b) => {
     // Oncelik 1: Ultra-Elite olanlar
     if (a.isUltraElite !== b.isUltraElite) {
       return a.isUltraElite ? -1 : 1;
     }
     
-    // Oncelik 2: Overnight sabah yesil orani
+    // Oncelik 2: Pro Trader STRONG_BUY_TONIGHT sinyali
+    const aProBuy = a.proTraderCriteria?.proSignal === 'STRONG_BUY_TONIGHT' || a.proTraderCriteria?.proSignal === 'BUY_TONIGHT';
+    const bProBuy = b.proTraderCriteria?.proSignal === 'STRONG_BUY_TONIGHT' || b.proTraderCriteria?.proSignal === 'BUY_TONIGHT';
+    if (aProBuy !== bProBuy) return aProBuy ? -1 : 1;
+    
+    // Oncelik 3: Minervini Template gecenleri
+    const aMinervini = a.proTraderCriteria?.minerviniTemplate?.passed;
+    const bMinervini = b.proTraderCriteria?.minerviniTemplate?.passed;
+    if (aMinervini !== bMinervini) return aMinervini ? -1 : 1;
+    
+    // Oncelik 4: Kurumsal birikim olanlar
+    const aAccum = a.proTraderCriteria?.institutionalAccumulation?.signal === 'strong_accumulation' || 
+                   a.proTraderCriteria?.institutionalAccumulation?.signal === 'accumulation';
+    const bAccum = b.proTraderCriteria?.institutionalAccumulation?.signal === 'strong_accumulation' || 
+                   b.proTraderCriteria?.institutionalAccumulation?.signal === 'accumulation';
+    if (aAccum !== bAccum) return aAccum ? -1 : 1;
+    
+    // Oncelik 5: Overnight sabah yesil orani
     const morningRateDiff = (b.overnightAnalysis?.overallMorningGreenRate || 0) - (a.overnightAnalysis?.overallMorningGreenRate || 0);
     if (Math.abs(morningRateDiff) > 15) return morningRateDiff;
     
-    // Oncelik 3: Morning Green skoru
+    // Oncelik 6: Morning Green skoru
     const morningDiff = (b.morningGreen?.morningGreenScore || 0) - (a.morningGreen?.morningGreenScore || 0);
     if (Math.abs(morningDiff) > 15) return morningDiff;
     
-    // Oncelik 4: Master skor
+    // Oncelik 7: Master skor
     return (b as typeof b & {masterScore: number}).masterScore - (a as typeof a & {masterScore: number}).masterScore;
   });
   
-  // KADEME 1: Ideal kriterler (%70 guven esigi)
+  // KADEME 1: Ideal kriterler - PRO TRADER KRITERLERI DAHIL
   const tier1 = scoredResults.filter(r => {
     if (r.risk.dealBreakers.length > 0) return false;
     if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
     if (r.compositeScore < 50) return false;           // %50 minimum
     if (r.signalStrength.strength < 45) return false;  // %45 sinyal gucu
     if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
+    
+    // Pro Trader kriterleri - AVOID ve SHORT olmamali
+    if (r.proTraderCriteria?.proSignal === 'AVOID' || r.proTraderCriteria?.proSignal === 'SHORT_CANDIDATE') return false;
+    
     return true;
   });
   
   if (tier1.length >= 5) return tier1.slice(0, 5);
   
-  // KADEME 2: Orta kriterler (%60 guven esigi)
+  // KADEME 2: Orta kriterler - Pro skor >= 40
   const tier2 = scoredResults.filter(r => {
     if (r.risk.dealBreakers.length > 0) return false;
     if (r.decision.action === 'AVOID') return false;
     if (r.compositeScore < 40) return false;           // %40 minimum
     if (r.signalStrength.strength < 35) return false;  // %35 sinyal gucu
     if (r.risk.level === 'extreme') return false;
+    
+    // Pro Trader - distribution olmamali
+    if (r.proTraderCriteria?.institutionalAccumulation?.signal === 'strong_distribution') return false;
+    
     return true;
   });
   

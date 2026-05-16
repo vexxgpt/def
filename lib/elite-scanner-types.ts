@@ -538,6 +538,95 @@ export interface EliteScanResult {
   // ULTRA-ELITE SKORU (Yeni)
   ultraEliteScore?: number;
   isUltraElite?: boolean;
+  
+  // PRO TRADER KRITERLERI (Dunya Standartlari)
+  proTraderCriteria?: {
+    // Mark Minervini Trend Template
+    minerviniTemplate: {
+      passed: boolean;
+      score: number; // 0-100
+      criteria: {
+        above150SMA: boolean;      // 150 gunluk SMA uzerinde
+        above200SMA: boolean;      // 200 gunluk SMA uzerinde
+        sma150Above200: boolean;   // 150 SMA > 200 SMA
+        priceAbove30PercentFrom52Low: boolean;  // 52 hafta dipten en az %30 yukarda
+        priceWithin25PercentOf52High: boolean;  // 52 hafta tepeden max %25 asagida
+        rsRatingAbove70: boolean;  // Relative Strength > 70
+      };
+    };
+    
+    // VCP - Volatility Contraction Pattern (William O'Neil)
+    vcpPattern: {
+      detected: boolean;
+      contractions: number;  // Kac kez daralma
+      tightnessScore: number; // 0-100 - ne kadar sikisik
+      breakoutPotential: number; // 0-100
+      pivotPrice?: number;  // Kirilim noktasi
+    };
+    
+    // Kurumsal Birikim (Dark Pool Proxy)
+    institutionalAccumulation: {
+      score: number; // -100 to +100
+      signal: 'strong_accumulation' | 'accumulation' | 'neutral' | 'distribution' | 'strong_distribution';
+      indicators: {
+        volumeClimaxDays: number;  // Son 20 gunde yuksek hacimli gun sayisi
+        upVolumeRatio: number;     // Yukselis gunlerindeki hacim orani
+        priceVolumeConvergence: boolean; // Fiyat ve hacim ayni yonde mi
+        unusualVolumeSpikes: number;  // Olagan disi hacim sivrileri
+      };
+    };
+    
+    // Relative Strength (Sektore Gore)
+    relativeStrength: {
+      rs52Week: number;      // 52 haftalik RS (0-100)
+      rs13Week: number;      // 13 haftalik RS
+      rs4Week: number;       // 4 haftalik RS
+      rsRating: number;      // IBD tarzi RS Rating
+      sectorRank: number;    // Sektor icindeki siralama (1 = en iyi)
+      outperformingMarket: boolean;  // BIST100'den iyi mi
+    };
+    
+    // Gap Analysis Pro
+    gapAnalysisPro: {
+      gapType: 'breakaway' | 'runaway' | 'exhaustion' | 'common' | 'none';
+      gapFillProbability: number;  // 0-100
+      averageGapSize: number;      // Ortalama gap buyuklugu %
+      gapSuccessRate: number;      // Gap up sonrasi basari orani
+      lastGapFilled: boolean;      // Son gap kapandi mi
+    };
+    
+    // Smart Money Flow
+    smartMoneyFlow: {
+      flowScore: number;  // -100 to +100
+      netMoneyFlow20d: number;  // Son 20 gun net para akisi (TL)
+      bigPlayerActivity: 'buying' | 'selling' | 'neutral';
+      accumulationDistribution: number;  // A/D line trend
+      onBalanceVolumeTrend: 'rising' | 'falling' | 'flat';
+    };
+    
+    // Pre-Market / After Hours Analizi
+    extendedHoursAnalysis?: {
+      hasPremarketData: boolean;
+      premarketVolume?: number;
+      premarketChange?: number;
+      afterHoursActivity?: 'bullish' | 'bearish' | 'neutral';
+      gapPrediction?: number;  // Beklenen gap %
+    };
+    
+    // Earnings/News Catalyst
+    catalystAnalysis: {
+      hasUpcomingEarnings: boolean;
+      daysToEarnings?: number;
+      recentNewsImpact: 'positive' | 'negative' | 'neutral' | 'none';
+      sectorMomentum: 'hot' | 'warm' | 'cold';
+    };
+    
+    // Final Pro Score
+    proScore: number;  // 0-100 (Tum pro kriterlerin birlesimi)
+    proGrade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'F';
+    proSignal: 'STRONG_BUY_TONIGHT' | 'BUY_TONIGHT' | 'WATCH' | 'AVOID' | 'SHORT_CANDIDATE';
+    proReasons: string[];
+  };
 }
 
 export interface ScanProgress {

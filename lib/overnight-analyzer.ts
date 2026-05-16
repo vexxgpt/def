@@ -202,8 +202,11 @@ export function calculateWeeklyMorningScore(bars: HistoricalBar[]): WeeklyMornin
     const morningCandle = getCandle(currentBar);
     const morningGap = ((currentBar.open - prevBar.close) / prevBar.close) * 100;
     
+    // Date objesine cevir (string veya Date olabilir)
+    const barDate = currentBar.date instanceof Date ? currentBar.date : new Date(currentBar.date);
+    
     const session: OvernightSession = {
-      date: currentBar.date.toISOString().split('T')[0],
+      date: barDate.toISOString().split('T')[0],
       eveningClose: prevBar.close,
       eveningHigh: prevBar.high,
       eveningLow: prevBar.low,
@@ -818,5 +821,591 @@ function getDefaultOvernightAnalysis(): OvernightAnalysis {
       reasoning: ['Yeterli veri yok'],
       optimalTiming: 'Belirsiz',
     },
+  };
+}
+
+// ==========================================
+// PRO TRADER KRITERLERI - DUNYA STANDARTLARI
+// Mark Minervini, William O'Neil, IBD Metodolojisi
+// ==========================================
+
+export interface ProTraderCriteria {
+  minerviniTemplate: {
+    passed: boolean;
+    score: number;
+    criteria: {
+      above150SMA: boolean;
+      above200SMA: boolean;
+      sma150Above200: boolean;
+      priceAbove30PercentFrom52Low: boolean;
+      priceWithin25PercentOf52High: boolean;
+      rsRatingAbove70: boolean;
+    };
+  };
+  vcpPattern: {
+    detected: boolean;
+    contractions: number;
+    tightnessScore: number;
+    breakoutPotential: number;
+    pivotPrice?: number;
+  };
+  institutionalAccumulation: {
+    score: number;
+    signal: 'strong_accumulation' | 'accumulation' | 'neutral' | 'distribution' | 'strong_distribution';
+    indicators: {
+      volumeClimaxDays: number;
+      upVolumeRatio: number;
+      priceVolumeConvergence: boolean;
+      unusualVolumeSpikes: number;
+    };
+  };
+  relativeStrength: {
+    rs52Week: number;
+    rs13Week: number;
+    rs4Week: number;
+    rsRating: number;
+    sectorRank: number;
+    outperformingMarket: boolean;
+  };
+  gapAnalysisPro: {
+    gapType: 'breakaway' | 'runaway' | 'exhaustion' | 'common' | 'none';
+    gapFillProbability: number;
+    averageGapSize: number;
+    gapSuccessRate: number;
+    lastGapFilled: boolean;
+  };
+  smartMoneyFlow: {
+    flowScore: number;
+    netMoneyFlow20d: number;
+    bigPlayerActivity: 'buying' | 'selling' | 'neutral';
+    accumulationDistribution: number;
+    onBalanceVolumeTrend: 'rising' | 'falling' | 'flat';
+  };
+  catalystAnalysis: {
+    hasUpcomingEarnings: boolean;
+    daysToEarnings?: number;
+    recentNewsImpact: 'positive' | 'negative' | 'neutral' | 'none';
+    sectorMomentum: 'hot' | 'warm' | 'cold';
+  };
+  proScore: number;
+  proGrade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'F';
+  proSignal: 'STRONG_BUY_TONIGHT' | 'BUY_TONIGHT' | 'WATCH' | 'AVOID' | 'SHORT_CANDIDATE';
+  proReasons: string[];
+}
+
+/**
+ * Mark Minervini Trend Template Analizi
+ * Think & Trade Like a Champion metodolojisi
+ */
+export function analyzeMinerviniTemplate(
+  bars: HistoricalBar[],
+  currentPrice: number,
+  fiftyTwoWeekHigh: number,
+  fiftyTwoWeekLow: number
+): ProTraderCriteria['minerviniTemplate'] {
+  if (bars.length < 200) {
+    return {
+      passed: false,
+      score: 0,
+      criteria: {
+        above150SMA: false,
+        above200SMA: false,
+        sma150Above200: false,
+        priceAbove30PercentFrom52Low: false,
+        priceWithin25PercentOf52High: false,
+        rsRatingAbove70: false,
+      },
+    };
+  }
+  
+  // SMA hesaplama
+  const closes = bars.map(b => b.close);
+  const sma150 = closes.slice(-150).reduce((a, b) => a + b, 0) / 150;
+  const sma200 = closes.slice(-200).reduce((a, b) => a + b, 0) / 200;
+  
+  // Kriterler
+  const above150SMA = currentPrice > sma150;
+  const above200SMA = currentPrice > sma200;
+  const sma150Above200 = sma150 > sma200;
+  
+  // 52 hafta pozisyonu
+  const distanceFrom52Low = ((currentPrice - fiftyTwoWeekLow) / fiftyTwoWeekLow) * 100;
+  const distanceFrom52High = ((fiftyTwoWeekHigh - currentPrice) / fiftyTwoWeekHigh) * 100;
+  
+  const priceAbove30PercentFrom52Low = distanceFrom52Low >= 30;
+  const priceWithin25PercentOf52High = distanceFrom52High <= 25;
+  
+  // RS Rating (basitlestirilmis)
+  const priceChange13w = ((currentPrice - closes[closes.length - 65]) / closes[closes.length - 65]) * 100;
+  const rsRatingAbove70 = priceChange13w > 5; // %5+ 13 haftalik getiri
+  
+  // Skor hesapla
+  let score = 0;
+  if (above150SMA) score += 20;
+  if (above200SMA) score += 20;
+  if (sma150Above200) score += 15;
+  if (priceAbove30PercentFrom52Low) score += 15;
+  if (priceWithin25PercentOf52High) score += 15;
+  if (rsRatingAbove70) score += 15;
+  
+  const passed = score >= 70; // 5/6 kriter saglanmali
+  
+  return {
+    passed,
+    score,
+    criteria: {
+      above150SMA,
+      above200SMA,
+      sma150Above200,
+      priceAbove30PercentFrom52Low,
+      priceWithin25PercentOf52High,
+      rsRatingAbove70,
+    },
+  };
+}
+
+/**
+ * VCP - Volatility Contraction Pattern
+ * William O'Neil CANSLIM metodolojisi
+ */
+export function analyzeVCPPattern(bars: HistoricalBar[]): ProTraderCriteria['vcpPattern'] {
+  if (bars.length < 60) {
+    return {
+      detected: false,
+      contractions: 0,
+      tightnessScore: 0,
+      breakoutPotential: 0,
+    };
+  }
+  
+  const recentBars = bars.slice(-60);
+  const ranges: number[] = [];
+  
+  // Her 10 gunluk periyodun range'ini hesapla
+  for (let i = 0; i < 6; i++) {
+    const periodBars = recentBars.slice(i * 10, (i + 1) * 10);
+    const high = Math.max(...periodBars.map(b => b.high));
+    const low = Math.min(...periodBars.map(b => b.low));
+    const rangePercent = ((high - low) / low) * 100;
+    ranges.push(rangePercent);
+  }
+  
+  // Daralma sayisini hesapla (her periyod oncekinden dar mi?)
+  let contractions = 0;
+  for (let i = 1; i < ranges.length; i++) {
+    if (ranges[i] < ranges[i - 1] * 0.8) {
+      contractions++;
+    }
+  }
+  
+  // Sikisiklik skoru (son periyodun darligi)
+  const lastRange = ranges[ranges.length - 1];
+  const avgRange = ranges.reduce((a, b) => a + b, 0) / ranges.length;
+  const tightnessScore = Math.max(0, Math.min(100, (1 - lastRange / avgRange) * 100));
+  
+  // Breakout potansiyeli
+  const detected = contractions >= 2 && tightnessScore > 30;
+  const breakoutPotential = detected ? Math.min(100, contractions * 20 + tightnessScore * 0.5) : 0;
+  
+  // Pivot fiyat (son 10 gun en yuksegi)
+  const pivotPrice = detected ? Math.max(...recentBars.slice(-10).map(b => b.high)) : undefined;
+  
+  return {
+    detected,
+    contractions,
+    tightnessScore: Math.round(tightnessScore),
+    breakoutPotential: Math.round(breakoutPotential),
+    pivotPrice,
+  };
+}
+
+/**
+ * Kurumsal Birikim Analizi (Dark Pool Proxy)
+ * Buyuk oyuncularin hareketlerini tespit et
+ */
+export function analyzeInstitutionalAccumulation(bars: HistoricalBar[]): ProTraderCriteria['institutionalAccumulation'] {
+  if (bars.length < 20) {
+    return {
+      score: 0,
+      signal: 'neutral',
+      indicators: {
+        volumeClimaxDays: 0,
+        upVolumeRatio: 0.5,
+        priceVolumeConvergence: false,
+        unusualVolumeSpikes: 0,
+      },
+    };
+  }
+  
+  const recentBars = bars.slice(-20);
+  const avgVolume = recentBars.reduce((a, b) => a + b.volume, 0) / 20;
+  
+  // Yuksek hacimli gunler (2x ortalama)
+  const volumeClimaxDays = recentBars.filter(b => b.volume > avgVolume * 2).length;
+  
+  // Yukselis gunlerindeki hacim orani
+  const upDays = recentBars.filter(b => b.close > b.open);
+  const downDays = recentBars.filter(b => b.close < b.open);
+  const upVolume = upDays.reduce((a, b) => a + b.volume, 0);
+  const downVolume = downDays.reduce((a, b) => a + b.volume, 0);
+  const upVolumeRatio = upVolume / (upVolume + downVolume + 1);
+  
+  // Fiyat-Hacim uyumu
+  const priceUp = recentBars[recentBars.length - 1].close > recentBars[0].close;
+  const volumeUp = recentBars.slice(-5).reduce((a, b) => a + b.volume, 0) > recentBars.slice(0, 5).reduce((a, b) => a + b.volume, 0);
+  const priceVolumeConvergence = priceUp === volumeUp;
+  
+  // Olagan disi hacim sivrileri
+  const unusualVolumeSpikes = recentBars.filter(b => b.volume > avgVolume * 3).length;
+  
+  // Skor hesapla (-100 to +100)
+  let score = 0;
+  score += (upVolumeRatio - 0.5) * 100; // -50 to +50
+  score += volumeClimaxDays * 8;        // 0 to 40
+  score += priceVolumeConvergence ? 20 : -10;
+  score += unusualVolumeSpikes * 5;     // 0 to 25
+  
+  score = Math.max(-100, Math.min(100, score));
+  
+  // Sinyal
+  let signal: ProTraderCriteria['institutionalAccumulation']['signal'] = 'neutral';
+  if (score >= 60) signal = 'strong_accumulation';
+  else if (score >= 25) signal = 'accumulation';
+  else if (score <= -60) signal = 'strong_distribution';
+  else if (score <= -25) signal = 'distribution';
+  
+  return {
+    score: Math.round(score),
+    signal,
+    indicators: {
+      volumeClimaxDays,
+      upVolumeRatio: Math.round(upVolumeRatio * 100) / 100,
+      priceVolumeConvergence,
+      unusualVolumeSpikes,
+    },
+  };
+}
+
+/**
+ * Relative Strength Analizi
+ * IBD RS Rating tarzi
+ */
+export function analyzeRelativeStrength(
+  bars: HistoricalBar[],
+  currentPrice: number,
+  marketChange: number = 0 // BIST100 degisimi
+): ProTraderCriteria['relativeStrength'] {
+  if (bars.length < 52 * 5) { // 52 hafta = ~260 gun
+    const shortBars = bars.length;
+    const priceChange = shortBars > 20 
+      ? ((currentPrice - bars[0].close) / bars[0].close) * 100 
+      : 0;
+    
+    return {
+      rs52Week: 50,
+      rs13Week: 50,
+      rs4Week: Math.min(100, Math.max(0, 50 + priceChange)),
+      rsRating: 50,
+      sectorRank: 50,
+      outperformingMarket: priceChange > marketChange,
+    };
+  }
+  
+  // Fiyat degisim oranlari
+  const closes = bars.map(b => b.close);
+  const len = closes.length;
+  
+  const change52w = ((currentPrice - closes[len - 260]) / closes[len - 260]) * 100;
+  const change13w = ((currentPrice - closes[len - 65]) / closes[len - 65]) * 100;
+  const change4w = ((currentPrice - closes[len - 20]) / closes[len - 20]) * 100;
+  
+  // RS hesapla (0-100 arasi)
+  const rs52Week = Math.min(100, Math.max(0, 50 + change52w * 2));
+  const rs13Week = Math.min(100, Math.max(0, 50 + change13w * 3));
+  const rs4Week = Math.min(100, Math.max(0, 50 + change4w * 5));
+  
+  // RS Rating (IBD formulu: 40% son 3 ay, 20% onceki 3 ay, 20% onceki 6 ay, 20% son 12 ay)
+  const rsRating = Math.round(
+    rs13Week * 0.4 +
+    rs52Week * 0.3 +
+    rs4Week * 0.3
+  );
+  
+  return {
+    rs52Week: Math.round(rs52Week),
+    rs13Week: Math.round(rs13Week),
+    rs4Week: Math.round(rs4Week),
+    rsRating,
+    sectorRank: 50, // Sektor verisi olmadan varsayilan
+    outperformingMarket: change13w > marketChange,
+  };
+}
+
+/**
+ * Pro Gap Analizi
+ * Gap tipi ve fill olasiligi
+ */
+export function analyzeGapPro(bars: HistoricalBar[]): ProTraderCriteria['gapAnalysisPro'] {
+  if (bars.length < 30) {
+    return {
+      gapType: 'none',
+      gapFillProbability: 50,
+      averageGapSize: 0,
+      gapSuccessRate: 50,
+      lastGapFilled: true,
+    };
+  }
+  
+  const recentBars = bars.slice(-30);
+  const gaps: { size: number; filled: boolean; type: string }[] = [];
+  
+  for (let i = 1; i < recentBars.length; i++) {
+    const prevClose = recentBars[i - 1].close;
+    const currOpen = recentBars[i].open;
+    const gapPercent = ((currOpen - prevClose) / prevClose) * 100;
+    
+    if (Math.abs(gapPercent) > 0.5) { // %0.5'ten buyuk gap
+      const filled = recentBars[i].low <= prevClose || recentBars[i].high >= prevClose;
+      gaps.push({
+        size: gapPercent,
+        filled,
+        type: Math.abs(gapPercent) > 3 ? 'large' : 'small',
+      });
+    }
+  }
+  
+  // Gap istatistikleri
+  const avgGapSize = gaps.length > 0 
+    ? gaps.reduce((a, b) => a + Math.abs(b.size), 0) / gaps.length 
+    : 0;
+  
+  const filledGaps = gaps.filter(g => g.filled).length;
+  const gapFillProbability = gaps.length > 0 
+    ? Math.round((filledGaps / gaps.length) * 100) 
+    : 50;
+  
+  const successfulGaps = gaps.filter(g => g.size > 0 && !g.filled).length;
+  const gapSuccessRate = gaps.filter(g => g.size > 0).length > 0
+    ? Math.round((successfulGaps / gaps.filter(g => g.size > 0).length) * 100)
+    : 50;
+  
+  // Son gap durumu
+  const lastGap = gaps[gaps.length - 1];
+  const lastGapFilled = lastGap ? lastGap.filled : true;
+  
+  // Gap tipi belirleme
+  let gapType: ProTraderCriteria['gapAnalysisPro']['gapType'] = 'none';
+  if (lastGap) {
+    if (Math.abs(lastGap.size) > 5) {
+      gapType = lastGapFilled ? 'exhaustion' : 'breakaway';
+    } else if (Math.abs(lastGap.size) > 2) {
+      gapType = 'runaway';
+    } else {
+      gapType = 'common';
+    }
+  }
+  
+  return {
+    gapType,
+    gapFillProbability,
+    averageGapSize: Math.round(avgGapSize * 100) / 100,
+    gapSuccessRate,
+    lastGapFilled,
+  };
+}
+
+/**
+ * Smart Money Flow Analizi
+ * Accumulation/Distribution ve OBV trend
+ */
+export function analyzeSmartMoneyFlow(bars: HistoricalBar[]): ProTraderCriteria['smartMoneyFlow'] {
+  if (bars.length < 20) {
+    return {
+      flowScore: 0,
+      netMoneyFlow20d: 0,
+      bigPlayerActivity: 'neutral',
+      accumulationDistribution: 0,
+      onBalanceVolumeTrend: 'flat',
+    };
+  }
+  
+  const recentBars = bars.slice(-20);
+  
+  // A/D Line hesapla
+  let adLine = 0;
+  for (const bar of recentBars) {
+    const clv = bar.high !== bar.low 
+      ? ((bar.close - bar.low) - (bar.high - bar.close)) / (bar.high - bar.low)
+      : 0;
+    adLine += clv * bar.volume;
+  }
+  
+  // OBV trend
+  let obv = 0;
+  for (let i = 1; i < recentBars.length; i++) {
+    if (recentBars[i].close > recentBars[i - 1].close) {
+      obv += recentBars[i].volume;
+    } else if (recentBars[i].close < recentBars[i - 1].close) {
+      obv -= recentBars[i].volume;
+    }
+  }
+  
+  // Net para akisi (fiyat * hacim degisimi)
+  let netMoneyFlow = 0;
+  for (const bar of recentBars) {
+    const typicalPrice = (bar.high + bar.low + bar.close) / 3;
+    const moneyFlow = typicalPrice * bar.volume;
+    if (bar.close > bar.open) {
+      netMoneyFlow += moneyFlow;
+    } else {
+      netMoneyFlow -= moneyFlow;
+    }
+  }
+  
+  // Skor hesapla
+  const adTrend = adLine > 0 ? 1 : -1;
+  const obvTrend = obv > 0 ? 1 : -1;
+  const flowTrend = netMoneyFlow > 0 ? 1 : -1;
+  
+  const flowScore = (adTrend + obvTrend + flowTrend) * 33;
+  
+  // Buyuk oyuncu aktivitesi
+  let bigPlayerActivity: ProTraderCriteria['smartMoneyFlow']['bigPlayerActivity'] = 'neutral';
+  if (flowScore >= 60) bigPlayerActivity = 'buying';
+  else if (flowScore <= -60) bigPlayerActivity = 'selling';
+  
+  // OBV trend string
+  let onBalanceVolumeTrend: ProTraderCriteria['smartMoneyFlow']['onBalanceVolumeTrend'] = 'flat';
+  const obvChange = obv / (recentBars.reduce((a, b) => a + b.volume, 0) || 1);
+  if (obvChange > 0.1) onBalanceVolumeTrend = 'rising';
+  else if (obvChange < -0.1) onBalanceVolumeTrend = 'falling';
+  
+  return {
+    flowScore: Math.round(flowScore),
+    netMoneyFlow20d: Math.round(netMoneyFlow),
+    bigPlayerActivity,
+    accumulationDistribution: Math.round(adLine),
+    onBalanceVolumeTrend,
+  };
+}
+
+/**
+ * Tum Pro Trader Kriterlerini Hesapla
+ */
+export function calculateProTraderCriteria(
+  bars: HistoricalBar[],
+  currentPrice: number,
+  fiftyTwoWeekHigh: number,
+  fiftyTwoWeekLow: number,
+  marketChange: number = 0
+): ProTraderCriteria {
+  const minervini = analyzeMinerviniTemplate(bars, currentPrice, fiftyTwoWeekHigh, fiftyTwoWeekLow);
+  const vcp = analyzeVCPPattern(bars);
+  const institutional = analyzeInstitutionalAccumulation(bars);
+  const rs = analyzeRelativeStrength(bars, currentPrice, marketChange);
+  const gapPro = analyzeGapPro(bars);
+  const smartMoney = analyzeSmartMoneyFlow(bars);
+  
+  // Pro skor hesapla
+  let proScore = 0;
+  const proReasons: string[] = [];
+  
+  // Minervini Template (%25)
+  if (minervini.passed) {
+    proScore += 25;
+    proReasons.push(`Minervini Template PASSED (${minervini.score}/100)`);
+  } else {
+    proScore += (minervini.score / 100) * 15;
+    if (minervini.score >= 50) {
+      proReasons.push(`Minervini Template kismi gecti (${minervini.score}/100)`);
+    }
+  }
+  
+  // VCP Pattern (%15)
+  if (vcp.detected) {
+    proScore += 15;
+    proReasons.push(`VCP Pattern tespit edildi - ${vcp.contractions} daralma`);
+  } else if (vcp.tightnessScore > 30) {
+    proScore += 8;
+    proReasons.push(`Konsolidasyon formasyonu gelisiyor`);
+  }
+  
+  // Kurumsal Birikim (%20)
+  if (institutional.signal === 'strong_accumulation') {
+    proScore += 20;
+    proReasons.push(`GUCLU KURUMSAL BIRIKIM tespit edildi!`);
+  } else if (institutional.signal === 'accumulation') {
+    proScore += 12;
+    proReasons.push(`Kurumsal birikim sinyali`);
+  } else if (institutional.signal === 'distribution') {
+    proReasons.push(`UYARI: Kurumsal dagitim tespit edildi`);
+  }
+  
+  // Relative Strength (%15)
+  if (rs.rsRating >= 80) {
+    proScore += 15;
+    proReasons.push(`RS Rating cok yuksek: ${rs.rsRating}`);
+  } else if (rs.rsRating >= 60) {
+    proScore += 10;
+    proReasons.push(`RS Rating iyi: ${rs.rsRating}`);
+  }
+  
+  // Gap Analizi (%10)
+  if (gapPro.gapSuccessRate >= 70 && gapPro.gapType !== 'exhaustion') {
+    proScore += 10;
+    proReasons.push(`Gap basari orani yuksek: %${gapPro.gapSuccessRate}`);
+  } else if (gapPro.gapType === 'exhaustion') {
+    proReasons.push(`UYARI: Exhaustion gap - geri cekilme riski`);
+  }
+  
+  // Smart Money Flow (%15)
+  if (smartMoney.bigPlayerActivity === 'buying') {
+    proScore += 15;
+    proReasons.push(`Smart Money ALIS yapıyor`);
+  } else if (smartMoney.bigPlayerActivity === 'selling') {
+    proReasons.push(`UYARI: Smart Money SATIS yapiyor`);
+  }
+  
+  // Pro Grade
+  let proGrade: ProTraderCriteria['proGrade'] = 'F';
+  if (proScore >= 90) proGrade = 'A+';
+  else if (proScore >= 80) proGrade = 'A';
+  else if (proScore >= 70) proGrade = 'B+';
+  else if (proScore >= 60) proGrade = 'B';
+  else if (proScore >= 45) proGrade = 'C';
+  else if (proScore >= 30) proGrade = 'D';
+  
+  // Pro Signal
+  let proSignal: ProTraderCriteria['proSignal'] = 'WATCH';
+  if (proScore >= 85 && minervini.passed && institutional.score > 30) {
+    proSignal = 'STRONG_BUY_TONIGHT';
+    proReasons.unshift('*** IDEAL OVERNIGHT FIRSATI ***');
+  } else if (proScore >= 70 && (minervini.passed || institutional.score > 20)) {
+    proSignal = 'BUY_TONIGHT';
+    proReasons.unshift('Guclu overnight adayi');
+  } else if (proScore < 30 || institutional.signal === 'strong_distribution') {
+    proSignal = 'AVOID';
+    proReasons.unshift('UZAK DUR - Kriterler karsilanmiyor');
+  } else if (smartMoney.bigPlayerActivity === 'selling' && rs.rsRating < 40) {
+    proSignal = 'SHORT_CANDIDATE';
+    proReasons.unshift('Short adayi olabilir');
+  }
+  
+  return {
+    minerviniTemplate: minervini,
+    vcpPattern: vcp,
+    institutionalAccumulation: institutional,
+    relativeStrength: rs,
+    gapAnalysisPro: gapPro,
+    smartMoneyFlow: smartMoney,
+    catalystAnalysis: {
+      hasUpcomingEarnings: false, // Gercek veri olmadan
+      recentNewsImpact: 'none',
+      sectorMomentum: 'warm',
+    },
+    proScore: Math.round(proScore),
+    proGrade,
+    proSignal,
+    proReasons,
   };
 }
