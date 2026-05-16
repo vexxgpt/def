@@ -7,11 +7,18 @@ import type {
   EliteRiskAnalysis, 
   EliteTargetAnalysis,
   EliteScanResult,
+  HistoricalBar,
   RISK_THRESHOLDS,
   POSITION_SIZING
 } from './elite-scanner-types';
 import { summarizeSignals } from './elite-signal-engine';
 import { findSector } from './bist-stocks';
+import { 
+  analyzeMorningGreen, 
+  analyzeGap, 
+  detectMomentumSurge, 
+  analyzeSmartMoney 
+} from './morning-green-analyzer';
 
 const RISK_LIMITS = {
   MAX_VOLATILITY_ATR_PERCENT: 5,
@@ -466,7 +473,7 @@ export function calculateEliteScore(
 }
 
 // ==========================================
-// KARAR MOTORU
+// KARAR MOTORU - ULTRA-PRO VERSIYON
 // ==========================================
 
 export function generateDecision(
@@ -478,9 +485,87 @@ export function generateDecision(
   action: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'AVOID' | 'SELL';
   reasoning: string[];
   conviction: number;
+  proAnalysis: {
+    confluenceScore: number;
+    trendAlignment: number;
+    momentumQuality: number;
+    riskAdjustedReturn: number;
+    institutionalSignal: 'strong' | 'moderate' | 'weak' | 'none';
+    marketTiming: 'optimal' | 'good' | 'neutral' | 'poor';
+    entryQuality: 'A' | 'B' | 'C' | 'D' | 'F';
+  };
 } {
   const reasoning: string[] = [];
   let conviction = score.confidence;
+  
+  // === PRO ANALIZ HESAPLAMALARI ===
+  const signalSummary = summarizeSignals(signals);
+  
+  // Confluence Score (farkli kategorilerden sinyal sayisi)
+  const categoryStrengths: Record<string, number> = {};
+  for (const signal of signals) {
+    if (signal.type === 'strong_buy' || signal.type === 'buy') {
+      categoryStrengths[signal.category] = (categoryStrengths[signal.category] || 0) + (signal.type === 'strong_buy' ? 2 : 1);
+    }
+  }
+  const activeCategories = Object.keys(categoryStrengths).length;
+  const confluenceScore = Math.min(100, activeCategories * 20 + Object.values(categoryStrengths).reduce((a, b) => a + b, 0) * 3);
+  
+  // Trend Alignment Score
+  let trendAlignment = 50;
+  if (categoryStrengths['trend']) trendAlignment += categoryStrengths['trend'] * 10;
+  if (categoryStrengths['ichimoku']) trendAlignment += categoryStrengths['ichimoku'] * 8;
+  if (categoryStrengths['multi_timeframe']) trendAlignment += categoryStrengths['multi_timeframe'] * 12;
+  trendAlignment = Math.min(100, trendAlignment);
+  
+  // Momentum Quality Score
+  let momentumQuality = 50;
+  if (categoryStrengths['momentum']) momentumQuality += categoryStrengths['momentum'] * 8;
+  if (categoryStrengths['volume']) momentumQuality += categoryStrengths['volume'] * 6;
+  momentumQuality = Math.min(100, momentumQuality);
+  
+  // Risk Adjusted Return (Sharpe-like)
+  const expectedReturn = target.targets.moderate.percent;
+  const riskPenalty = risk.score * 0.5;
+  const riskAdjustedReturn = Math.max(0, expectedReturn - riskPenalty);
+  
+  // Institutional Signal Detection
+  let institutionalSignal: 'strong' | 'moderate' | 'weak' | 'none' = 'none';
+  const volumeSignal = categoryStrengths['volume'] || 0;
+  const strongBuyCount = signalSummary.strongBuyCount;
+  if (volumeSignal >= 4 && strongBuyCount >= 3) institutionalSignal = 'strong';
+  else if (volumeSignal >= 2 && strongBuyCount >= 2) institutionalSignal = 'moderate';
+  else if (volumeSignal >= 1 || strongBuyCount >= 1) institutionalSignal = 'weak';
+  
+  // Market Timing Score
+  let marketTiming: 'optimal' | 'good' | 'neutral' | 'poor' = 'neutral';
+  const totalBuySignals = signalSummary.strongBuyCount + signalSummary.buyCount;
+  const totalSellSignals = signalSummary.strongSellCount + signalSummary.sellCount;
+  const netSignal = totalBuySignals - totalSellSignals;
+  if (netSignal >= 8 && confluenceScore >= 70) marketTiming = 'optimal';
+  else if (netSignal >= 5 && confluenceScore >= 50) marketTiming = 'good';
+  else if (netSignal <= -3) marketTiming = 'poor';
+  
+  // Entry Quality Grade
+  let entryQuality: 'A' | 'B' | 'C' | 'D' | 'F' = 'C';
+  const combinedScore = (confluenceScore + trendAlignment + momentumQuality) / 3;
+  if (combinedScore >= 80 && risk.level === 'very_low') entryQuality = 'A';
+  else if (combinedScore >= 70 && (risk.level === 'very_low' || risk.level === 'low')) entryQuality = 'B';
+  else if (combinedScore >= 55 && risk.level !== 'extreme' && risk.level !== 'very_high') entryQuality = 'C';
+  else if (combinedScore >= 40) entryQuality = 'D';
+  else entryQuality = 'F';
+  
+  const proAnalysis = {
+    confluenceScore,
+    trendAlignment,
+    momentumQuality,
+    riskAdjustedReturn,
+    institutionalSignal,
+    marketTiming,
+    entryQuality,
+  };
+  
+  // === KARAR MANTIGI ===
   
   // Deal breaker kontrolu
   if (risk.dealBreakers.length > 0) {
@@ -492,6 +577,7 @@ export function generateDecision(
         'Risk cok yuksek - para kaybetme olasiligi yuksek.'
       ],
       conviction: 0,
+      proAnalysis: { ...proAnalysis, entryQuality: 'F' },
     };
   }
   
@@ -505,53 +591,63 @@ export function generateDecision(
         '1M TL pozisyon icin cok riskli.'
       ],
       conviction: Math.min(20, conviction),
+      proAnalysis: { ...proAnalysis, entryQuality: 'F' },
     };
   }
   
-  // Sinyal analizi
-  const signalSummary = summarizeSignals(signals);
   const netBuySignals = signalSummary.strongBuyCount + signalSummary.buyCount - 
                         signalSummary.strongSellCount - signalSummary.sellCount;
   
-  // STRONG_BUY kriterleri
+  // STRONG_BUY kriterleri - COK SIKI
   if (
-    score.grade === 'A+' || score.grade === 'A' &&
-    risk.level === 'low' || risk.level === 'very_low' &&
+    (score.grade === 'A+' || score.grade === 'A') &&
+    (risk.level === 'low' || risk.level === 'very_low') &&
     target.riskRewardRatios.moderate >= 2 &&
-    signalSummary.strongBuyCount >= 2 &&
-    netBuySignals >= 5
+    signalSummary.strongBuyCount >= 3 &&
+    netBuySignals >= 7 &&
+    confluenceScore >= 70 &&
+    activeCategories >= 4 &&
+    entryQuality === 'A'
   ) {
     reasoning.push(
-      `Mukemmel firsat! Grade: ${score.grade}`,
-      `${signalSummary.strongBuyCount} guclu alim sinyali`,
-      `Risk/Odul: 1:${target.riskRewardRatios.moderate}`,
-      `Risk seviyesi: ${risk.level}`,
-      'Tum kosullar ideal.'
+      `MUKEMMEL FIRSAT! Grade: ${score.grade}`,
+      `${signalSummary.strongBuyCount} GUCLU alim sinyali, ${activeCategories} farkli kategoride`,
+      `Confluence Skoru: ${confluenceScore}/100`,
+      `Risk/Odul: 1:${target.riskRewardRatios.moderate.toFixed(1)}`,
+      `Kurumsal Sinyal: ${institutionalSignal.toUpperCase()}`,
+      `Giris Kalitesi: ${entryQuality}`,
+      'Tum profesyonel kriterler karsilandi!'
     );
     return {
       action: 'STRONG_BUY',
       reasoning,
-      conviction: Math.min(95, conviction + 20),
+      conviction: Math.min(98, conviction + 25),
+      proAnalysis,
     };
   }
   
-  // BUY kriterleri
+  // BUY kriterleri - SIKI
   if (
     (score.grade === 'A+' || score.grade === 'A' || score.grade === 'B+') &&
-    (risk.level === 'low' || risk.level === 'medium' || risk.level === 'very_low') &&
+    (risk.level === 'low' || risk.level === 'very_low') &&
     target.riskRewardRatios.conservative >= 1.5 &&
-    netBuySignals >= 3
+    netBuySignals >= 5 &&
+    confluenceScore >= 50 &&
+    activeCategories >= 3 &&
+    (entryQuality === 'A' || entryQuality === 'B')
   ) {
     reasoning.push(
-      `Iyi firsat. Grade: ${score.grade}`,
-      `Net ${netBuySignals} alim sinyali`,
-      `Risk/Odul: 1:${target.riskRewardRatios.conservative}`,
-      `Risk seviyesi: ${risk.level}`
+      `Guvenilir Firsat! Grade: ${score.grade}`,
+      `Net ${netBuySignals} alim sinyali, ${activeCategories} kategoride`,
+      `Confluence Skoru: ${confluenceScore}/100`,
+      `Risk/Odul: 1:${target.riskRewardRatios.conservative.toFixed(1)}`,
+      `Giris Kalitesi: ${entryQuality}`
     );
     return {
       action: 'BUY',
       reasoning,
-      conviction: Math.min(85, conviction + 10),
+      conviction: Math.min(92, conviction + 15),
+      proAnalysis,
     };
   }
   
@@ -570,6 +666,7 @@ export function generateDecision(
       action: 'SELL',
       reasoning,
       conviction: Math.min(70, conviction),
+      proAnalysis: { ...proAnalysis, entryQuality: 'F' },
     };
   }
   
@@ -577,14 +674,16 @@ export function generateDecision(
   reasoning.push(
     `Grade: ${score.grade}`,
     `Net sinyal: ${netBuySignals > 0 ? '+' : ''}${netBuySignals}`,
+    `Confluence: ${confluenceScore}/100`,
     `Risk: ${risk.level}`,
-    'Net sinyal yok - bekleyin veya daha iyi firsatlara bakin.'
+    'Profesyonel kriterler karsilanmiyor - daha iyi firsatlari bekleyin.'
   );
   
   return {
     action: 'HOLD',
     reasoning,
     conviction: Math.min(50, conviction),
+    proAnalysis,
   };
 }
 
@@ -605,6 +704,7 @@ interface EliteScanInput {
   fiftyTwoWeekLow: number;
   indicators: EliteTechnicalIndicators;
   signals: EliteSignal[];
+  bars?: HistoricalBar[]; // Tarihsel veri - sabah yesil analizi icin
 }
 
 export function generateEliteScanResult(input: EliteScanInput): EliteScanResult {
@@ -640,6 +740,13 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
   const dataQuality = input.indicators.volume.sma20 > 0 ? 
     (input.indicators.volume.ratio > 0.3 ? 'excellent' : 'good') : 'fair';
   
+  // PRO ANALIZLER - SABAH YESIL YAKMA
+  const bars = input.bars || [];
+  const morningGreen = analyzeMorningGreen(bars, input.currentPrice);
+  const gapAnalysis = analyzeGap(bars, input.currentPrice);
+  const momentumSurge = detectMomentumSurge(bars, input.currentPrice, input.volume);
+  const smartMoney = analyzeSmartMoney(bars, input.volume);
+  
   return {
     symbol: input.symbol,
     name: input.name,
@@ -674,6 +781,12 @@ export function generateEliteScanResult(input: EliteScanInput): EliteScanResult 
     
     lastUpdated: new Date(),
     dataQuality,
+    
+    // PRO OZELLIKLER
+    morningGreen,
+    gapAnalysis,
+    momentumSurge,
+    smartMoney,
   };
 }
 
@@ -704,6 +817,168 @@ export function sortEliteResults(results: EliteScanResult[]): EliteScanResult[] 
   });
 }
 
+// ==========================================
+// PROFESYONEL SKORLAMA SISTEMI
+// TradingView, Finviz, ThinkOrSwim tarzinda
+// ==========================================
+
+// Her hisse icin kompozit skor hesapla (0-100)
+export function calculateCompositeScore(r: EliteScanResult): number {
+  let score = 0;
+  
+  // 1. TEKNIK SKOR (max 25 puan)
+  score += Math.min(25, r.score.technical * 0.25);
+  
+  // 2. MOMENTUM SKORU (max 20 puan)
+  score += Math.min(20, r.score.momentum * 0.20);
+  
+  // 3. TREND SKORU (max 20 puan)
+  score += Math.min(20, r.score.trend * 0.20);
+  
+  // 4. HACIM SKORU (max 15 puan)
+  const volumeBonus = r.volume.ratio >= 2 ? 15 : r.volume.ratio >= 1.5 ? 12 : r.volume.ratio >= 1 ? 9 : r.volume.ratio * 9;
+  score += volumeBonus;
+  
+  // 5. SINYAL GUCU (max 20 puan)
+  const netSignals = r.signalSummary.strongBuyCount * 2 + r.signalSummary.buyCount - 
+                     r.signalSummary.strongSellCount * 2 - r.signalSummary.sellCount;
+  const signalScore = Math.max(0, Math.min(20, (netSignals + 5) * 2));
+  score += signalScore;
+  
+  // BONUS PUANLAR
+  // Bullish EMA alignment
+  if (r.indicators.ema.alignment === 'perfect_bullish') score += 5;
+  else if (r.indicators.ema.alignment === 'bullish') score += 3;
+  
+  // Guclu ADX trendi
+  if (r.indicators.adx.trend === 'strong_up') score += 4;
+  else if (r.indicators.adx.trend === 'up') score += 2;
+  
+  // Bullish MACD
+  if (r.indicators.macd.histogram > 0 && r.indicators.macd.crossover === 'bullish') score += 4;
+  
+  // Ideal RSI bolgesi (40-60)
+  if (r.indicators.rsi.current >= 40 && r.indicators.rsi.current <= 60) score += 3;
+  
+  // Bullish divergence bonus
+  if (r.indicators.rsi.divergence === 'bullish' || r.indicators.macd.divergence === 'bullish') score += 5;
+  
+  // CEZA PUANLARI
+  // Bearish divergence
+  if (r.indicators.rsi.divergence === 'bearish' || r.indicators.macd.divergence === 'bearish') score -= 10;
+  
+  // Asiri alim/satim
+  if (r.indicators.rsi.current > 75) score -= 8;
+  if (r.indicators.rsi.current < 25) score -= 5;
+  
+  // Yuksek risk
+  if (r.risk.level === 'extreme') score -= 20;
+  else if (r.risk.level === 'very_high') score -= 12;
+  else if (r.risk.level === 'high') score -= 6;
+  
+  // Deal breaker
+  if (r.risk.dealBreakers.length > 0) score -= 25;
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Sinyal Gucu Hesaplama (TradingView tarzinda)
+export function calculateSignalStrength(r: EliteScanResult): {
+  strength: number; // 0-100
+  label: 'GUCLU AL' | 'AL' | 'NOTR' | 'SAT' | 'GUCLU SAT';
+  oscillators: { buy: number; neutral: number; sell: number };
+  movingAverages: { buy: number; neutral: number; sell: number };
+  summary: { buy: number; neutral: number; sell: number };
+} {
+  // Osilatorler
+  let oscBuy = 0, oscNeutral = 0, oscSell = 0;
+  
+  // RSI
+  if (r.indicators.rsi.current < 30) oscBuy++;
+  else if (r.indicators.rsi.current > 70) oscSell++;
+  else oscNeutral++;
+  
+  // Stochastic
+  if (r.indicators.stochastic.k < 20) oscBuy++;
+  else if (r.indicators.stochastic.k > 80) oscSell++;
+  else oscNeutral++;
+  
+  // CCI
+  if (r.indicators.cci.current < -100) oscBuy++;
+  else if (r.indicators.cci.current > 100) oscSell++;
+  else oscNeutral++;
+  
+  // Williams %R
+  if (r.indicators.williamsR.current < -80) oscBuy++;
+  else if (r.indicators.williamsR.current > -20) oscSell++;
+  else oscNeutral++;
+  
+  // MFI
+  if (r.indicators.mfi.current < 20) oscBuy++;
+  else if (r.indicators.mfi.current > 80) oscSell++;
+  else oscNeutral++;
+  
+  // MACD
+  if (r.indicators.macd.histogram > 0 && r.indicators.macd.crossover === 'bullish') oscBuy++;
+  else if (r.indicators.macd.histogram < 0 && r.indicators.macd.crossover === 'bearish') oscSell++;
+  else oscNeutral++;
+  
+  // ADX
+  if (r.indicators.adx.plusDI > r.indicators.adx.minusDI && r.indicators.adx.current > 20) oscBuy++;
+  else if (r.indicators.adx.minusDI > r.indicators.adx.plusDI && r.indicators.adx.current > 20) oscSell++;
+  else oscNeutral++;
+  
+  // Hareketli Ortalamalar
+  let maBuy = 0, maNeutral = 0, maSell = 0;
+  const price = r.price.current;
+  
+  // EMA'lar
+  if (price > r.indicators.ema.ema8) maBuy++; else maSell++;
+  if (price > r.indicators.ema.ema21) maBuy++; else maSell++;
+  if (price > r.indicators.ema.ema55) maBuy++; else maSell++;
+  if (price > r.indicators.ema.ema200) maBuy++; else maSell++;
+  
+  // SMA'lar
+  if (price > r.indicators.sma.sma20) maBuy++; else maSell++;
+  if (price > r.indicators.sma.sma50) maBuy++; else maSell++;
+  if (price > r.indicators.sma.sma100) maBuy++; else maSell++;
+  if (price > r.indicators.sma.sma200) maBuy++; else maSell++;
+  
+  // Ichimoku
+  if (r.indicators.ichimoku.cloudSignal === 'strong_bullish') maBuy += 2;
+  else if (r.indicators.ichimoku.cloudSignal === 'bullish') maBuy++;
+  else if (r.indicators.ichimoku.cloudSignal === 'strong_bearish') maSell += 2;
+  else if (r.indicators.ichimoku.cloudSignal === 'bearish') maSell++;
+  else maNeutral++;
+  
+  // Toplam
+  const totalBuy = oscBuy + maBuy;
+  const totalNeutral = oscNeutral + maNeutral;
+  const totalSell = oscSell + maSell;
+  const total = totalBuy + totalNeutral + totalSell;
+  
+  // Strength hesapla (-100 to +100, sonra 0-100'e cevir)
+  const rawStrength = ((totalBuy - totalSell) / total) * 100;
+  const strength = Math.round((rawStrength + 100) / 2);
+  
+  // Label belirle
+  let label: 'GUCLU AL' | 'AL' | 'NOTR' | 'SAT' | 'GUCLU SAT';
+  if (strength >= 75) label = 'GUCLU AL';
+  else if (strength >= 55) label = 'AL';
+  else if (strength >= 45) label = 'NOTR';
+  else if (strength >= 25) label = 'SAT';
+  else label = 'GUCLU SAT';
+  
+  return {
+    strength,
+    label,
+    oscillators: { buy: oscBuy, neutral: oscNeutral, sell: oscSell },
+    movingAverages: { buy: maBuy, neutral: maNeutral, sell: maSell },
+    summary: { buy: totalBuy, neutral: totalNeutral, sell: totalSell },
+  };
+}
+
+// Finviz tarzinda filtreleme
 export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[] {
   return results.filter(r => {
     // Deal breaker olanlar disinda
@@ -712,15 +987,89 @@ export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[
     // AVOID ve SELL disinda
     if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
     
-    // Minimum grade B
-    if (r.score.grade === 'C' || r.score.grade === 'D' || r.score.grade === 'F') return false;
+    // Minimum grade C (F ve D disinda)
+    if (r.score.grade === 'F' || r.score.grade === 'D') return false;
     
-    // Minimum conviction %40
-    if (r.decision.conviction < 40) return false;
+    // Minimum conviction %55
+    if (r.decision.conviction < 55) return false;
     
-    // Risk cok yuksek olmasin
+    // Risk extreme olmamali
+    if (r.risk.level === 'extreme') return false;
+    
+    // En az 2 alim sinyali
+    const totalBuySignals = r.signalSummary.strongBuyCount + r.signalSummary.buyCount;
+    if (totalBuySignals < 2) return false;
+    
+    return true;
+  });
+}
+
+// Pro Trader filtreleme - TOP 5 icin (kademeli)
+// SABAH YESIL YAKMA SKORU DAHIL
+export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
+  // Tum sonuclara kompozit skor ve sabah yesil skoru ekle
+  const scoredResults = results.map(r => {
+    const compositeScore = calculateCompositeScore(r);
+    const signalStrength = calculateSignalStrength(r);
+    const morningGreenScore = r.morningGreen?.morningGreenScore || 50;
+    
+    // MASTER SKOR: Kompozit + Sabah Yesil + Sinyal Gucu
+    // Sabah yesil yakma icin optimize edilmis agirliklar
+    const masterScore = Math.round(
+      compositeScore * 0.35 +           // %35 teknik skor
+      morningGreenScore * 0.40 +        // %40 sabah yesil skoru (EN ONEMLI!)
+      signalStrength.strength * 0.25    // %25 sinyal gucu
+    );
+    
+    return {
+      ...r,
+      compositeScore,
+      signalStrength,
+      masterScore,
+    };
+  });
+  
+  // MASTER SKOR'a gore sirala (sabah yesil oncelikli)
+  scoredResults.sort((a, b) => {
+    // Oncelik 1: Morning Green skoru yuksek olanlar
+    const morningDiff = (b.morningGreen?.morningGreenScore || 0) - (a.morningGreen?.morningGreenScore || 0);
+    if (Math.abs(morningDiff) > 15) return morningDiff;
+    
+    // Oncelik 2: Master skor
+    return (b as typeof b & {masterScore: number}).masterScore - (a as typeof a & {masterScore: number}).masterScore;
+  });
+  
+  // Minimum kriterler
+  const filtered = scoredResults.filter(r => {
+    // Deal breaker yok
+    if (r.risk.dealBreakers.length > 0) return false;
+    
+    // AVOID ve SELL disinda
+    if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
+    
+    // Minimum kompozit skor 40
+    if (r.compositeScore < 40) return false;
+    
+    // Sinyal gucu en az 40
+    if (r.signalStrength.strength < 40) return false;
+    
+    // Risk extreme veya very_high olmamali
     if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
     
     return true;
   });
+  
+  // Eger yeterli sonuc yoksa, kriterleri gevset
+  if (filtered.length < 5) {
+    const relaxedFiltered = scoredResults.filter(r => {
+      if (r.risk.dealBreakers.length > 0) return false;
+      if (r.decision.action === 'AVOID') return false;
+      if (r.compositeScore < 30) return false;
+      if (r.risk.level === 'extreme') return false;
+      return true;
+    });
+    return relaxedFiltered.slice(0, 5);
+  }
+  
+  return filtered.slice(0, 5);
 }

@@ -10,6 +10,137 @@ export interface HistoricalBar {
   volume: number;
 }
 
+// ==========================================
+// SABAH YESIL YAKMA ANALIZI - PRO TRADER
+// ==========================================
+
+export interface MorningGreenAnalysis {
+  // Son 5 gunluk sabah performansi
+  last5Days: {
+    date: string;
+    prevClose: number;
+    open: number;
+    gapPercent: number; // Acilis gapi %
+    morningHigh: number; // Ilk 30 dk en yuksek
+    morningGreen: boolean; // Sabah yesil mi
+    closedGreen: boolean; // Gun yesil mi kapandi
+    afternoonReversal: boolean; // 17:45 sonrasi ters mi dondü
+  }[];
+  
+  // Sabah Yesil Yakma Skoru (0-100)
+  morningGreenScore: number;
+  
+  // Istatistikler
+  stats: {
+    // Son 5 gun
+    greenMornings5d: number; // Kac kez sabah yesil
+    greenMorningRate5d: number; // % oran
+    
+    // Son 10 gun
+    greenMornings10d: number;
+    greenMorningRate10d: number;
+    
+    // Son 20 gun (1 ay)
+    greenMornings20d: number;
+    greenMorningRate20d: number;
+    
+    // Tutarlilik
+    avgMorningGap: number; // Ortalama sabah gapi %
+    avgMorningMove: number; // Ortalama sabah hareketi %
+    
+    // 17:45 Sonrasi Guvenirligi
+    afternoonGreenToMorningRed: number; // 17:45 yesil -> sabah kirmizi kac kez
+    afternoonGreenToMorningGreen: number; // 17:45 yesil -> sabah yesil kac kez
+    afternoonReliability: number; // % guvenirlik
+    
+    // Gap Fill Analizi
+    gapFillRate: number; // Gap'lerin kapanma orani
+    avgGapFillTime: number; // Ortalama gap kapanma suresi (dakika)
+  };
+  
+  // Sabah Stratejisi Onerisi
+  strategy: {
+    recommendation: 'STRONG_MORNING_BUY' | 'MORNING_BUY' | 'WAIT_FOR_DIP' | 'AVOID_MORNING' | 'SHORT_CANDIDATE';
+    confidence: number;
+    reasoning: string[];
+    optimalEntry: {
+      type: 'PREMARKET' | 'OPEN' | 'FIRST_PULLBACK' | 'BREAKOUT';
+      priceLevel?: number;
+      timeWindow?: string;
+    };
+  };
+  
+  // Pattern Tespiti
+  patterns: {
+    consecutiveGreenMornings: number; // Ust uste kac gun yesil sabah
+    isHotStreak: boolean; // 3+ gun ust uste yesil
+    hasMomentum: boolean; // Artan momentum
+    volumeTrend: 'increasing' | 'decreasing' | 'stable';
+    priceAcceleration: boolean; // Fiyat ivmeleniyor mu
+  };
+}
+
+// Gap Up/Down Analizi
+export interface GapAnalysis {
+  currentGap: {
+    percent: number;
+    type: 'gap_up' | 'gap_down' | 'flat';
+    size: 'large' | 'medium' | 'small' | 'none';
+  };
+  
+  historicalGaps: {
+    avgGapUp: number;
+    avgGapDown: number;
+    gapUpFrequency: number; // Son 20 gunde kac kez gap up
+    gapDownFrequency: number;
+    largeGapUpSuccess: number; // Buyuk gap up sonrasi basari orani
+  };
+  
+  gapFillProbability: number; // Bu gapin kapanma olasiligi
+}
+
+// Momentum Surge Detection (Trade Ideas tarzi)
+export interface MomentumSurge {
+  detected: boolean;
+  type: 'breakout' | 'continuation' | 'reversal' | 'none';
+  strength: number; // 0-100
+  volumeMultiple: number; // Ortalamaya gore kac kat hacim
+  priceMove: number; // Son 5 dakika % hareket
+  
+  // AI Tahmini
+  prediction: {
+    direction: 'up' | 'down' | 'neutral';
+    targetPercent: number;
+    confidence: number;
+    timeHorizon: '15min' | '30min' | '1hour' | '1day';
+  };
+}
+
+// Dark Pool / Buyuk Oyuncu Aktivitesi (Moon Scanner tarzi)
+export interface SmartMoneyActivity {
+  // Buyuk islemler
+  largeTransactions: {
+    count: number;
+    totalVolume: number;
+    netDirection: 'buying' | 'selling' | 'neutral';
+    avgSize: number;
+  };
+  
+  // Kurumsal Akis
+  institutionalFlow: {
+    score: number; // -100 to +100
+    trend: 'accumulation' | 'distribution' | 'neutral';
+    strength: 'strong' | 'moderate' | 'weak';
+  };
+  
+  // Unusual Activity
+  unusualActivity: {
+    detected: boolean;
+    type: 'volume_spike' | 'price_spike' | 'both' | 'none';
+    magnitude: number;
+  };
+}
+
 // Genisletilmis Teknik Indikatorler
 export interface EliteTechnicalIndicators {
   // Momentum Indikatorleri
@@ -344,11 +475,42 @@ export interface EliteScanResult {
     action: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'AVOID' | 'SELL';
     reasoning: string[];
     conviction: number; // 0-100
+    proAnalysis?: {
+      confluenceScore: number;
+      trendAlignment: number;
+      momentumQuality: number;
+      riskAdjustedReturn: number;
+      institutionalSignal: 'strong' | 'moderate' | 'weak' | 'none';
+      marketTiming: 'optimal' | 'good' | 'neutral' | 'poor';
+      entryQuality: 'A' | 'B' | 'C' | 'D' | 'F';
+    };
   };
   
   // Meta
   lastUpdated: Date;
   dataQuality: 'excellent' | 'good' | 'fair' | 'poor';
+  
+  // Pro Skorlama (TradingView tarzinda)
+  compositeScore?: number; // 0-100
+  signalStrength?: {
+    strength: number;
+    label: 'GUCLU AL' | 'AL' | 'NOTR' | 'SAT' | 'GUCLU SAT';
+    oscillators: { buy: number; neutral: number; sell: number };
+    movingAverages: { buy: number; neutral: number; sell: number };
+    summary: { buy: number; neutral: number; sell: number };
+  };
+  
+  // SABAH YESIL YAKMA ANALIZI
+  morningGreen?: MorningGreenAnalysis;
+  
+  // GAP ANALIZI
+  gapAnalysis?: GapAnalysis;
+  
+  // MOMENTUM SURGE (Trade Ideas tarzi)
+  momentumSurge?: MomentumSurge;
+  
+  // SMART MONEY AKTIVITESI
+  smartMoney?: SmartMoneyActivity;
 }
 
 export interface ScanProgress {
