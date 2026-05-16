@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   CheckCircle2,
+  CheckCircle,
   AlertTriangle,
   XCircle,
   BarChart3,
@@ -82,14 +83,37 @@ export function EliteScanner() {
       overnightRisk: string;
       recommendation: string;
       reasoning: string;
-      keyFactors: string[];
+      keyFactors?: string[];
+      positives?: string[];
+      negatives?: string[];
+      keyMetrics?: {
+        sabahYesilSkoru?: number;
+        proTraderSkoru?: number;
+        minerviniGecti?: boolean;
+        kurumsalSinyal?: string;
+        smartMoney?: string;
+        rsiDurumu?: string;
+        trendDurumu?: string;
+      };
+      riskAnalysis?: {
+        maxKayip?: string;
+        stopLoss?: string;
+        riskSeviyesi?: string;
+      };
+      entryStrategy?: {
+        girisZamani?: string;
+        girisFiyati?: string;
+        pozisyonBoyutu?: string;
+      };
     }>;
     ranking: string[];
     topPick: {
       symbol: string;
       confidence: number;
       reasoning: string;
+      expectedReturn?: string;
     };
+    avoidList?: string[];
     marketOutlook: string;
     disclaimer: string;
   } | null>(null);
@@ -551,42 +575,53 @@ export function EliteScanner() {
                   {/* Top Pick */}
                   {aiAnalysis.topPick && (
                     <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        <span className="font-semibold text-primary">AI TOP PICK - AKSAM AL</span>
-                        <Badge className="bg-primary text-primary-foreground">
+                      <div className="flex items-center flex-wrap gap-3 mb-2">
+                        <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                        <span className="font-semibold text-primary">AI TOP PICK - POZISYON AC</span>
+                        <Badge className="bg-primary text-primary-foreground text-base px-3 py-1">
                           {aiAnalysis.topPick.symbol}
                         </Badge>
-                        <Badge variant="outline" className="ml-auto">
+                        <Badge variant="outline" className="bg-primary/20 border-primary/40">
                           Guven: %{aiAnalysis.topPick.confidence}
                         </Badge>
+                        {aiAnalysis.topPick.expectedReturn && (
+                          <Badge variant="outline" className="bg-chart-2/20 text-chart-2 border-chart-2/40">
+                            Beklenen: {aiAnalysis.topPick.expectedReturn}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-foreground">{aiAnalysis.topPick.reasoning}</p>
                     </div>
                   )}
                   
-                  {/* AI Siralama */}
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  {/* AI Siralama - Detayli Kartlar */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                     {aiAnalysis.analyses.map((analysis, idx) => {
                       const rankIndex = aiAnalysis.ranking.indexOf(analysis.symbol);
                       const isTopPick = analysis.symbol === aiAnalysis.topPick?.symbol;
+                      const isAvoid = aiAnalysis.avoidList?.includes(analysis.symbol);
                       
                       return (
                         <div 
                           key={analysis.symbol}
-                          className={`p-3 rounded-xl border ${
+                          className={`p-4 rounded-xl border transition-all hover:shadow-lg cursor-pointer ${
                             isTopPick 
-                              ? 'bg-primary/10 border-primary/40' 
-                              : analysis.recommendation === 'AKSAM_AL'
+                              ? 'bg-primary/10 border-primary/40 ring-2 ring-primary/20' 
+                              : analysis.recommendation === 'POZISYON_AC'
                               ? 'bg-chart-2/10 border-chart-2/30'
-                              : analysis.recommendation === 'UZAK_DUR'
+                              : analysis.recommendation === 'UZAK_DUR' || isAvoid
                               ? 'bg-destructive/10 border-destructive/30'
                               : 'bg-muted/50 border-border'
                           }`}
+                          onClick={() => {
+                            const stock = topResults.find(s => s.symbol === analysis.symbol);
+                            if (stock) setSelectedResult(stock);
+                          }}
                         >
-                          <div className="flex items-center justify-between mb-2">
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
                                 rankIndex === 0 ? 'bg-primary text-primary-foreground' :
                                 rankIndex === 1 ? 'bg-chart-2 text-white' :
                                 rankIndex === 2 ? 'bg-chart-4 text-white' :
@@ -594,12 +629,26 @@ export function EliteScanner() {
                               }`}>
                                 {rankIndex + 1}
                               </span>
-                              <span className="font-bold">{analysis.symbol}</span>
+                              <span className="font-bold text-lg">{analysis.symbol}</span>
                             </div>
-                            {isTopPick && <Sparkles className="h-4 w-4 text-primary" />}
+                            {isTopPick && <Sparkles className="h-5 w-5 text-primary animate-pulse" />}
+                            {isAvoid && <Ban className="h-5 w-5 text-destructive" />}
                           </div>
                           
-                          <div className="space-y-2">
+                          {/* TAVSIYE BADGE - BUYUK */}
+                          <Badge className={`w-full justify-center text-base py-1.5 mb-3 font-bold ${
+                            analysis.recommendation === 'POZISYON_AC' ? 'bg-primary hover:bg-primary text-primary-foreground' :
+                            analysis.recommendation === 'DIKKATLI_OL' ? 'bg-chart-4 hover:bg-chart-4 text-white' :
+                            'bg-destructive hover:bg-destructive text-destructive-foreground'
+                          }`}>
+                            {analysis.recommendation === 'POZISYON_AC' && <ThumbsUp className="h-4 w-4 mr-2" />}
+                            {analysis.recommendation === 'DIKKATLI_OL' && <AlertCircle className="h-4 w-4 mr-2" />}
+                            {analysis.recommendation === 'UZAK_DUR' && <Ban className="h-4 w-4 mr-2" />}
+                            {analysis.recommendation.replace('_', ' ')}
+                          </Badge>
+                          
+                          {/* Metrikler */}
+                          <div className="space-y-2 mb-3">
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Sabah Yesil</span>
                               <span className={`text-sm font-bold ${
@@ -614,28 +663,85 @@ export function EliteScanner() {
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Gece Riski</span>
                               <Badge variant="outline" className={`text-xs ${
-                                analysis.overnightRisk === 'dusuk' ? 'text-primary border-primary/30' :
-                                analysis.overnightRisk === 'orta' ? 'text-chart-4 border-chart-4/30' :
-                                'text-destructive border-destructive/30'
+                                analysis.overnightRisk === 'dusuk' ? 'text-primary border-primary/30 bg-primary/10' :
+                                analysis.overnightRisk === 'orta' ? 'text-chart-4 border-chart-4/30 bg-chart-4/10' :
+                                'text-destructive border-destructive/30 bg-destructive/10'
                               }`}>
-                                {analysis.overnightRisk}
+                                {analysis.overnightRisk.toUpperCase()}
                               </Badge>
                             </div>
                             
-                            <Badge className={`w-full justify-center ${
-                              analysis.recommendation === 'AKSAM_AL' ? 'bg-primary hover:bg-primary' :
-                              analysis.recommendation === 'BEKLE' ? 'bg-chart-4 hover:bg-chart-4' :
-                              'bg-destructive hover:bg-destructive'
-                            }`}>
-                              {analysis.recommendation.replace('_', ' ')}
-                            </Badge>
-                            
-                            <p className="text-xs text-muted-foreground line-clamp-2">{analysis.reasoning}</p>
+                            {analysis.entryStrategy && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Giris</span>
+                                <span className="text-xs font-semibold text-foreground">
+                                  {analysis.entryStrategy.girisZamani} | {analysis.entryStrategy.pozisyonBoyutu}
+                                </span>
+                              </div>
+                            )}
                           </div>
+                          
+                          {/* ARTILAR */}
+                          {analysis.positives && analysis.positives.length > 0 && (
+                            <div className="mb-2">
+                              <div className="flex items-center gap-1 mb-1">
+                                <CheckCircle className="h-3 w-3 text-primary" />
+                                <span className="text-xs font-semibold text-primary">Artilar</span>
+                              </div>
+                              <div className="space-y-0.5">
+                                {analysis.positives.slice(0, 3).map((positive, i) => (
+                                  <p key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                                    <span className="text-primary mt-0.5">+</span>
+                                    <span className="line-clamp-1">{positive}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* EKSILER */}
+                          {analysis.negatives && analysis.negatives.length > 0 && (
+                            <div className="mb-2">
+                              <div className="flex items-center gap-1 mb-1">
+                                <XCircle className="h-3 w-3 text-destructive" />
+                                <span className="text-xs font-semibold text-destructive">Eksiler</span>
+                              </div>
+                              <div className="space-y-0.5">
+                                {analysis.negatives.slice(0, 3).map((negative, i) => (
+                                  <p key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                                    <span className="text-destructive mt-0.5">-</span>
+                                    <span className="line-clamp-1">{negative}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* AI Aciklama */}
+                          <p className="text-xs text-muted-foreground line-clamp-2 italic border-t border-border pt-2 mt-2">
+                            {analysis.reasoning}
+                          </p>
                         </div>
                       );
                     })}
                   </div>
+                  
+                  {/* Uzak Dur Listesi */}
+                  {aiAnalysis.avoidList && aiAnalysis.avoidList.length > 0 && (
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Ban className="h-4 w-4 text-destructive" />
+                        <span className="text-sm font-semibold text-destructive">UZAK DUR - Bu Hisselerden Kacinilmali</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {aiAnalysis.avoidList.map(symbol => (
+                          <Badge key={symbol} variant="outline" className="text-destructive border-destructive/50">
+                            {symbol}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Market Outlook */}
                   {aiAnalysis.marketOutlook && (
