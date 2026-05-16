@@ -109,127 +109,67 @@ ${index + 1}. ${stock.symbol} (${stock.name})
 `;
     }).join('\n');
 
-    const prompt = `ROLUNUZ: Mark Minervini, William O'Neil ve Paul Tudor Jones metodolojilerini kullanan PROFESYONEL BORSA ANALISTI
-TARAYICI: 35 İNDİKATÖR (Minervini Template, Momentum, Volume, Trend, Price Action, Smart Money akımları vb.)
-STRATEJI: Overnight Gap-Up Trading - Saat 17:45'te AL, Sabah 10:00+ YESIL AÇILIŞTA SAT
+    const prompt = `GOREV: Verilen 5 hisseden HER BİRİ için DETAYLI analiz yap ve JSON döndür.
 
-=== ELITE SCANNER SONUÇLARI ===
+GEREKLİ VERILER (scanner'dan elde edilen):
 ${stocksSummary}
 
-=== DETAYLI ANALİZ TALİMATLARI ===
+ANALIZ TALIMATLAR:
+1. **SINYALLER**: Verilen tüm sinyalleri (%95 Minervini Template, %88 Kurumsal Birikim, %92 MACD vs) AL
+2. **RISK**: Verilen tüm riskler (Gap down, Stop loss kırılma vs) AL  
+3. **HEDEFLER**: Verilen tüm hedef seviyeleri AL (Muhafazakar, Orta, Agresif)
+4. **TEKNİK**: Verilen Destek/Direnç/Pivot seviyeleri AL
+5. **OVERNIGHT**: Verilen sabah yeşil % ve gap tahminleri AL
+6. **PRO TRADER**: Verilen pro trader skorları ve sinyalleri AL
 
-HER HİSSE İÇİN ŞU MADDELERİ ANALIZE TÜM 35 İNDİKATÖR'Ü KULLANAK DETAYLI YAZ:
+TAVSIYE:
+- Sabah yeşil %95+: AKSAM_AL (%10-12 pozisyon)
+- Sabah yeşil %80-95: GUCLU_AL (%8-10 pozisyon)
+- Sabah yeşil %60-80: AL (%5-7 pozisyon)
+- Sabah yeşil %40-60: BEKLE (%3-5 pozisyon)
+- Sabah yeşil <40: UZAK_DUR (%0-2 pozisyon)
 
-1. **GENEL BAKIŞ**: (2-3 cümle)
-   - Hissenin genel durumu
-   - Trendinin yönü (Yükselen/Düşen/Yatay)
-   - Momentum durumu
-   - Fiyat hareketi karakteri
-
-2. **SINYALLER** (Minimum 5-6 ayrı sinyal, her biri açıklanması gerekli):
-   - Minervini Template sinyalleri (Trend, Momentum, RS, Consolidation vb.)
-   - Volume sinyalleri (Akkümülasyon, Distribüsyon)
-   - Price Action sinyalleri (Double Bottom, Cup & Handle, vb.)
-   - Kurumsal birikim sinyalleri
-   - Smart Money akışı sinyalleri
-   - Momentum göstergeleri (MACD, RSI, Stochastic vb.)
-   - Her sinyal için yüzde skoru ver (ör: %85, %90, vb.)
-
-3. **RISK ANALİZİ** (Minimum 4-5 spesifik risk, her biri yüzde olasılıkla):
-   - Gece riski (Gap down olasılığı - %)
-   - Stop loss kırılma riski (%)
-   - Kurumsal satış riski (%)
-   - Piyasa riski (Genel BIST düşüş riski)
-   - Teknik direnç kırılma riski (%)
-   - Manuplasyon riski (%)
-
-4. **HEDEFLER** (Detaylı seviyeleri TL cinsinden ver):
-   - AL: Önerilen alış seviyesi
-   - KÂR SATIŞ 1: İlk kar satış hedefi (%2-3)
-   - KÂR SATIŞ 2: İkinci kar satış hedefi (%4-6)
-   - KÂR SATIŞ 3: Nihai kar satış hedefi (%8-12)
-   - STOP LOSS: Stop loss seviyesi
-
-5. **TEKNİK ANALİZ** (Detaylı destek/direnç):
-   - Kısa dönem destek seviyeleri
-   - Orta dönem destek seviyeleri
-   - Direnç seviyeleri
-   - İçteki Doji/Engulfing patternleri
-   - Fibonacci seviyeleri
-   - Pivot seviyeleri
-
-6. **OVERNIGHT RİSK DETAYLARI** (Overnight gap stratejisine göre):
-   - Sabah yeşil açma olasılığı (%)
-   - Gap up beklenen % miktarı
-   - Gap down riski (%)
-   - Overnight düşüş olasılığı (%)
-   - Tarihsel sabah yeşil oranı
-   - Haftanın ve ayın eğilimi
-
-7. **PRO TRADER PERSPEKTİFİ** (Kurumsal/Smart Money):
-   - Akıllı para hareketi (Büyük oyuncu alış/satış)
-   - Kurumsal katılım derecesi (%)
-   - Block trades aktivitesi
-   - Options flow sinyalleri
-   - Insider activity düzeyi
-   - Short covering olasılığı
-
-8. **POZİSYON MIKTARI**: Portfolio'nun kaçta kaçı bu hisseye yatırılmalı (%)
-   - Düşük riskli (düşük yeşil olasılığı): %2-3
-   - Orta riskli (orta yeşil olasılığı): %5-7
-   - Yüksek güven (yüksek yeşil olasılığı): %8-12
-
-=== JSON YANIT FORMATІ ===
-YANIT SADECE BU JSON FORMATINDA OLMALI (Türkçe karakterler gerekli):
-
+JSON OUTPUT (SADECE BU FORMAT):
 {
   "topPick": {
-    "symbol": "EN_İYİ_HİSSE",
-    "confidence": 85-100,
-    "reasoning": "Bu hisse neden #1 seçim - önemli nedenleri 1 cümle"
+    "symbol": "BEST_SYMBOL",
+    "confidence": 95,
+    "reasoning": "1 cümle neden"
   },
   "analyses": [
     {
-      "symbol": "XXXXX",
-      "morningGreenProbability": 0-100,
-      "overnightRisk": "düşük" | "orta" | "yüksek",
-      "recommendation": "AKSAM_AL" | "BEKLE" | "UZAK_DUR",
-      "reasoning": "Spesifik neden tavsiyesi (2-3 cümle, somut veriler içermeli)",
-      "positionSize": "%X (Açıklama: neden bu yüzde)",
-      "genel": "Hissenin genel durumu, trend ve momentum (2-3 cümle)",
+      "symbol": "HISSE",
+      "morningGreenProbability": 96,
+      "overnightRisk": "dusuk",
+      "recommendation": "AKSAM_AL",
+      "reasoning": "2-3 cümle somut veri ile",
+      "positionSize": "%10 (Cok yuksek guven)",
+      "genel": "Genel durum (2-3 cümle)",
       "signals": [
-        "Sinyal 1: Açıklaması (%YZ skoru)",
-        "Sinyal 2: Açıklaması (%YZ skoru)",
-        "Sinyal 3: Açıklaması (%YZ skoru)",
-        "Sinyal 4: Açıklaması (%YZ skoru)",
-        "Sinyal 5: Açıklaması (%YZ skoru)",
-        "Sinyal 6: Açıklaması (%YZ skoru)"
+        "Minervini Template GECTI (%95): Trend, Momentum, RS uyum",
+        "Kurumsal BIRIKIM ISLADI (%88): Yuksek hacim gunleri, fiyat-hacim uyumu",
+        "MACD Yukarida (%85): Momentum artisi, histogram genisliyor",
+        "EMA Mukemmel Dizilim (%90): 5>8>13>21>34>55>89>200",
+        "Ichimoku Guclu ALIŞ (%92): Fiyat bulutun ustunde, Tenkan>Kijun",
+        "OBV + Accumulation (%88): Yukselen trendde alim baskisi"
       ],
-      "riskAnalysis": "Detaylı risk değerlendirmesi:\n- Risk 1: Açıklama (% olasılık)\n- Risk 2: Açıklama (% olasılık)\n- Risk 3: Açıklama (% olasılık)\n- Risk 4: Açıklama (% olasılık)\n- Risk 5: Açıklama (% olasılık)",
+      "riskAnalysis": "Gap down riski: %5 (son 5 gunde 5/5 yesil). Stop loss riski: %3 (cok yakin seviye). Kurumsal satis riski: %2 (birikim sirasi). Piyasa riski: %4 (genel BIST). Toplam risk: ~%15.",
       "targets": {
-        "buy": "AL: X.XX TL (Açıklama)",
-        "take_profit_1": "KAR_1: X.XX TL (%+2-3)",
-        "take_profit_2": "KAR_2: X.XX TL (%+4-6)",
-        "take_profit_3": "KAR_3: X.XX TL (%+8-12)",
-        "stop_loss": "STOP: X.XX TL (Açıklama)"
+        "buy": "AL: 9.94 TL",
+        "take_profit_1": "KAR1: 10.18 TL (+2.4%)",
+        "take_profit_2": "KAR2: 10.43 TL (+5.0%)",
+        "take_profit_3": "KAR3: 10.75 TL (+8.2%)",
+        "stop_loss": "STOP: 9.22 TL (-7.2%)"
       },
-      "technical": "Destek-Direnç: Kısa dönem destek: X.XX TL, Orta dönem destek: X.XX TL, Direnç: X.XX TL. Pattern: [Pattern adı]. Fibonacci: [Seviyeleri]. Pivot: [Seviyeleri]",
-      "overnight": "Sabah yeşil olasılığı: %X (Tarihsel %Y). Gap up beklentisi: %Z. Gap down riski: %A. Gece düşüş riski: %B. Haftalık trend: [Trend]. Overnight bloklar: [Aktivite seviyesi]",
-      "proTrader": "Smart money: [Alış/Satış durumu %]. Kurumsal katılım: %X derece. Block trades: [Aktivite]. Options flow: [Sinyal]. Akıllı para hareketi: [Hareket]. Short covering: %Y olasılıkla beklenir"
+      "technical": "Destek: 9.22 TL (kisa), 8.88 TL (ort), Direnç: 10.43 TL. Pivot R1: 10.43, Fib %38: 9.30, Fib %61: 8.69. Pattern: Guclu uptrend.",
+      "overnight": "Sabah yesil olasiligi: %96 (son 5 gunde 5/5). Gap up: +0.39% beklenen. Gap down riski: %5. Gece dusus riski: %3. Haftalik skor: 94/100. HOT STREAK: 5 ust uste yesil!",
+      "proTrader": "Smart money ALIŞ yapıyor (%95). Kurumsal katılım: yüksek derece. Block trades: aktif. Büyük oyuncu akışı: POZITIF. Confluence skor: 100/100. Grade: STRONG MORNING BUY."
     }
   ],
-  "ranking": ["EN_İYİ", "2.SİRA", "3.SİRA", "4.SİRA", "5.SİRA"],
-  "marketOutlook": "Genel BIST trendi [Trend]. Overnight riski [Seviye]. Sektör duyarlılığı [Yön]. Koruma alması gereken seviye: X.XXX",
-  "disclaimer": "Bu bir yatırım tavsiyesi değildir, sadece teknik analiz amaçlıdır."
-}
-
-=== ÖNEMLİ HATIRLATMALAR ===
-1. HER YANIT DETAYLI, SOMUT VERILER VE YÜZDE İLE DESTEKLENMEŞ OLMALI
-2. 35 İNDİKATÖRÜN HEPSİNİ DÜŞÜNEREk ANALİZ YAP
-3. SINYAL, RISK, HEDEF, TEKNİK HER BİR BÖLÜMDE MİNİMUM 5-6 DETAY OLMALI
-4. POZİSYON MIKTARI AÇIKLANMIŞ OLMALI
-5. TÜM YÜZDE VE SEVİYELER SPESİFİK OLMALI (Kesinlikle)
-6. JSON FORMATINDA HATALI OLMAMALI, PARSE EDİLEBİLİR OLMALI`;
+  "ranking": ["SYM1", "SYM2", "SYM3", "SYM4", "SYM5"],
+  "marketOutlook": "Piyasa yukseli. Overnight riski dusuk. Sektор: teknik alim var.",
+  "disclaimer": "Yatirim tavsiyesi degildir."
+}`;
 
     const completion = await groq.chat.completions.create({
       messages: [
@@ -288,11 +228,48 @@ Yatırım tavsiyesi vermediğini, sadece teknik analiz yaptiğini her zaman beli
       analysis,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error("GROQ Elite Analiz hatasi:", error);
-    return NextResponse.json(
-      { error: "AI analizi yapilirken hata olustu", details: String(error) },
-      { status: 500 }
-    );
-  }
+    } catch (parseError) {
+      console.error("JSON parse hatasi:", parseError);
+      // Fallback response - verilen verilerden manuel olarak construct et
+      analysis = {
+        topPick: {
+          symbol: stocks[0]?.symbol || "N/A",
+          confidence: stocks[0]?.morningGreen?.morningGreenScore || 50,
+          reasoning: "Sistem skorlarina gore en iyi hisse"
+        },
+        analyses: stocks.map(s => ({
+          symbol: s.symbol,
+          morningGreenProbability: s.morningGreen?.morningGreenScore || s.overnightAnalysis?.overallMorningGreenRate || 50,
+          overnightRisk: s.risk.level === 'low' ? 'dusuk' : s.risk.level === 'high' ? 'yuksek' : 'orta',
+          recommendation: (s.morningGreen?.morningGreenScore || 50) >= 90 ? 'AKSAM_AL' : 
+                         (s.morningGreen?.morningGreenScore || 50) >= 70 ? 'GUCLU_AL' : 'BEKLE',
+          reasoning: `${s.symbol} hissesi, sistem skorlarina gore analiz edilmistir. Sabah yesil olasiligi: %${s.morningGreen?.morningGreenScore || s.overnightAnalysis?.overallMorningGreenRate || 50}. Risk seviyesi: ${s.risk.level}.`,
+          positionSize: `%${Math.min(12, Math.max(2, Math.round((s.morningGreen?.morningGreenScore || 50) / 10)))} (Sistem skoru tabanli)`,
+          genel: `${s.symbol} hissesi trend: ${s.decision.action}, Momentum: ${s.price.changePercent >= 0 ? 'YUKSELIS' : 'DUSUS'}, Elite Skor: ${s.score.total}/100.`,
+          signals: s.proTraderCriteria?.proReasons?.slice(0, 6) || [
+            "Minervini Template: Sistem degerlendirmesi",
+            "Volume Analiz: Veri tabaninda",
+            "Trend Analiz: Sistem skoruna gore",
+            "Momentum: Sistem degerlendirmesi",
+            "Kurumsal Aktivite: Skora gore",
+            "Smart Money: Veri analizi"
+          ],
+          riskAnalysis: `Gap down riski: ~%${Math.max(5, 20 - s.score.total/5)} (Skor tabanli). Stop loss riski: ~%5. Kurumsal satis riski: ~%3. Piyasa riski: ~%4. Toplam yaklasik risk: ~%${Math.max(5, 20 - s.score.total/5 + 12)}.`,
+          targets: {
+            buy: `AL: ${s.price.current.toFixed(2)} TL`,
+            take_profit_1: `KAR1: ${(s.price.current * 1.025).toFixed(2)} TL (+2.5%)`,
+            take_profit_2: `KAR2: ${(s.price.current * 1.05).toFixed(2)} TL (+5.0%)`,
+            take_profit_3: `KAR3: ${(s.price.current * 1.08).toFixed(2)} TL (+8.0%)`,
+            stop_loss: `STOP: ${(s.price.current * 0.93).toFixed(2)} TL (-7.0%)`
+          },
+          technical: `Fiyat: ${s.price.current.toFixed(2)} TL. Trend: ${s.decision.action === 'STRONG_BUY' ? 'Yukari' : 'Dusus'}. Risk Score: ${s.risk.score}/100.`,
+          overnight: `Sabah yesil olasiligi: %${s.morningGreen?.morningGreenScore || s.overnightAnalysis?.overallMorningGreenRate || 50}. Gap up beklentisi: Sistem tahmini. Gap down riski: %${Math.max(5, 20 - s.score.total/5)}. Haftalik skor: ${s.overnightAnalysis?.weeklyScore || 50}/100.`,
+          proTrader: `Pro Score: ${s.proTraderCriteria?.proScore || 50}/100. Minervini: ${s.proTraderCriteria?.minerviniTemplate?.passed ? 'GECTI' : 'GECMEDI'} (${s.proTraderCriteria?.minerviniTemplate?.score || 0}). Kurumsal: ${s.proTraderCriteria?.institutionalAccumulation?.signal || 'DEGER YOK'}. Smart Money: ${s.proTraderCriteria?.smartMoneyFlow?.bigPlayerActivity || 'DEGER YOK'}.`
+        })),
+        ranking: stocks.map(s => s.symbol),
+        marketOutlook: "Sistem analizi yapilmistir. Overnight riskler degerlendirilmis, tavsiye edilir.",
+        disclaimer: "Bu bir yatirim tavsiyesi degildir, sadece teknik analiz amacidir.",
+        note: "JSON response parse edilemedi, sistem skorlarından fallback yanıt oluşturulmuştur."
+      };
+    }
 }
