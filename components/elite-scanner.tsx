@@ -76,20 +76,31 @@ export function EliteScanner() {
   // AI Analiz State
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<{
+    topPick: {
+      symbol: string;
+      confidence: number;
+      reasoning: string;
+    };
     analyses: Array<{
       symbol: string;
       morningGreenProbability: number;
       overnightRisk: string;
       recommendation: string;
       reasoning: string;
-      keyFactors: string[];
+      positionSize: string;
+      genel: string;
+      signals: string[];
+      riskAnalysis: string;
+      targets: {
+        buy: string;
+        take_profit: string;
+        stop_loss: string;
+      };
+      technical: string;
+      overnight: string;
+      proTrader: string;
     }>;
     ranking: string[];
-    topPick: {
-      symbol: string;
-      confidence: number;
-      reasoning: string;
-    };
     marketOutlook: string;
     disclaimer: string;
   } | null>(null);
@@ -565,8 +576,8 @@ export function EliteScanner() {
                     </div>
                   )}
                   
-                  {/* AI Siralama */}
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  {/* AI Siralama - Detayli */}
+                  <div className="space-y-4">
                     {aiAnalysis.analyses.map((analysis, idx) => {
                       const rankIndex = aiAnalysis.ranking.indexOf(analysis.symbol);
                       const isTopPick = analysis.symbol === aiAnalysis.topPick?.symbol;
@@ -574,7 +585,7 @@ export function EliteScanner() {
                       return (
                         <div 
                           key={analysis.symbol}
-                          className={`p-3 rounded-xl border ${
+                          className={`p-4 rounded-xl border-2 ${
                             isTopPick 
                               ? 'bg-primary/10 border-primary/40' 
                               : analysis.recommendation === 'AKSAM_AL'
@@ -584,9 +595,10 @@ export function EliteScanner() {
                               : 'bg-muted/50 border-border'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          {/* Baslik */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                                 rankIndex === 0 ? 'bg-primary text-primary-foreground' :
                                 rankIndex === 1 ? 'bg-chart-2 text-white' :
                                 rankIndex === 2 ? 'bg-chart-4 text-white' :
@@ -594,43 +606,108 @@ export function EliteScanner() {
                               }`}>
                                 {rankIndex + 1}
                               </span>
-                              <span className="font-bold">{analysis.symbol}</span>
+                              <div>
+                                <span className="font-bold text-lg">{analysis.symbol}</span>
+                                {isTopPick && <Sparkles className="h-4 w-4 text-primary inline ml-2" />}
+                              </div>
                             </div>
-                            {isTopPick && <Sparkles className="h-4 w-4 text-primary" />}
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Sabah Yesil</span>
-                              <span className={`text-sm font-bold ${
-                                analysis.morningGreenProbability >= 70 ? 'text-primary' :
-                                analysis.morningGreenProbability >= 50 ? 'text-chart-4' :
-                                'text-destructive'
-                              }`}>
-                                %{analysis.morningGreenProbability}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Gece Riski</span>
-                              <Badge variant="outline" className={`text-xs ${
-                                analysis.overnightRisk === 'dusuk' ? 'text-primary border-primary/30' :
-                                analysis.overnightRisk === 'orta' ? 'text-chart-4 border-chart-4/30' :
-                                'text-destructive border-destructive/30'
-                              }`}>
-                                {analysis.overnightRisk}
-                              </Badge>
-                            </div>
-                            
-                            <Badge className={`w-full justify-center ${
+                            <Badge className={`${
                               analysis.recommendation === 'AKSAM_AL' ? 'bg-primary hover:bg-primary' :
                               analysis.recommendation === 'BEKLE' ? 'bg-chart-4 hover:bg-chart-4' :
                               'bg-destructive hover:bg-destructive'
                             }`}>
                               {analysis.recommendation.replace('_', ' ')}
                             </Badge>
+                          </div>
+
+                          {/* Neden */}
+                          <p className="text-sm text-foreground mb-3 pb-3 border-b border-border/50">
+                            <span className="font-semibold">Neden:</span> {analysis.reasoning}
+                          </p>
+
+                          {/* Ana Metrikler */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 pb-3 border-b border-border/50">
+                            <div>
+                              <span className="text-xs text-muted-foreground">Sabah Yesil</span>
+                              <p className={`text-sm font-bold ${
+                                analysis.morningGreenProbability >= 70 ? 'text-primary' :
+                                analysis.morningGreenProbability >= 50 ? 'text-chart-4' :
+                                'text-destructive'
+                              }`}>%{analysis.morningGreenProbability}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">Gece Riski</span>
+                              <p className={`text-sm font-bold ${
+                                analysis.overnightRisk === 'dusuk' ? 'text-primary' :
+                                analysis.overnightRisk === 'orta' ? 'text-chart-4' :
+                                'text-destructive'
+                              }`}>{analysis.overnightRisk}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">Pozisyon</span>
+                              <p className="text-sm font-bold text-foreground">{analysis.positionSize}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">Tahmin</span>
+                              <p className="text-sm font-bold text-foreground">%{analysis.morningGreenProbability}</p>
+                            </div>
+                          </div>
+
+                          {/* Detayli Analiz */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Genel Bakis</span>
+                              <p className="text-xs text-foreground">{analysis.genel}</p>
+                            </div>
                             
-                            <p className="text-xs text-muted-foreground line-clamp-2">{analysis.reasoning}</p>
+                            <div>
+                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Sinyaller</span>
+                              <ul className="text-xs text-foreground space-y-0.5">
+                                {analysis.signals?.slice(0, 2).map((signal, i) => (
+                                  <li key={i}>✓ {signal}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            
+                            <div>
+                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Risk Analizi</span>
+                              <p className="text-xs text-foreground">{analysis.riskAnalysis}</p>
+                            </div>
+                            
+                            <div>
+                              <span className="font-semibold text-xs text-muted-foreground block mb-1">Teknik Analiz</span>
+                              <p className="text-xs text-foreground">{analysis.technical}</p>
+                            </div>
+                          </div>
+
+                          {/* Hedefler */}
+                          {analysis.targets && (
+                            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50 text-xs">
+                              <div className="text-center">
+                                <span className="text-muted-foreground block">AL</span>
+                                <p className="font-semibold text-primary">{analysis.targets.buy}</p>
+                              </div>
+                              <div className="text-center">
+                                <span className="text-muted-foreground block">KAR SATIS</span>
+                                <p className="font-semibold text-chart-2">{analysis.targets.take_profit}</p>
+                              </div>
+                              <div className="text-center">
+                                <span className="text-muted-foreground block">STOP</span>
+                                <p className="font-semibold text-destructive">{analysis.targets.stop_loss}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Overnight & Pro Trader */}
+                          <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-xs">
+                            <div>
+                              <span className="font-semibold text-muted-foreground">Overnight: </span>
+                              <span className="text-foreground">{analysis.overnight}</span>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-muted-foreground">Pro Trader: </span>
+                              <span className="text-foreground">{analysis.proTrader}</span>
+                            </div>
                           </div>
                         </div>
                       );

@@ -123,35 +123,52 @@ ${stocksSummary}
 GOREV:
 Bu 5 hisseyi detayli analiz et ve SABAH YESIL YAKIP YAKMAYACAGINI tahmin et.
 
-Her hisse icin:
+Her hisse icin DETAYLAR:
 1. Sabah yesil acma olasiligi (0-100)
 2. Gece riski (dusuk/orta/yuksek)
-3. Tavsiye (AKSAM AL / BEKLE / UZAK DUR)
-4. Kisa aciklama (max 30 kelime)
+3. Tavsiye (AKSAM_AL / BEKLE / UZAK_DUR)
+4. NEDEN (Kisa aciklama - max 30 kelime)
+5. POZISYON MIKTARI (toplam sermayenin yuzde kaci bu hisseye alis yapilmali)
+6. GENEL BAKIS (Genel durum degerlendirmesi - 1-2 cumle)
+7. SINYALLER (Teknik sinyaller - 2-3 ana sinyal)
+8. RISK ANALIZI (Spesifik riskler - 2-3 ana risk)
+9. HEDEFLER (Al/Sat seviyeleri ve hedefleri)
+10. TEKNIK ANALIZ (Destek/Direnç seviyeleri)
+11. OVERNIGHT (Overnight risk detaylari ve gap tahminleri)
+12. PRO TRADER (Pro trader perspektifi - akilan para hareketi, smart money, kurumsal birikim)
 
 Sonra TUM 5 HISSEYI KARSILASTIR ve en iyiden en kotuye SIRALA.
 
-ONEMLI: Sadece GERCEK VERILERE dayanarak karar ver. Sabah yesil orani, overnight skoru, pro trader kriterleri, kurumsal birikim ve smart money akisi en onemli faktorler.
-
-JSON formatinda yanit ver:
+JSON formatinda yanit ver (Turkce karakterler kullanilab):
 {
+  "topPick": {
+    "symbol": "EN_IYI_HISSE",
+    "confidence": 0-100,
+    "reasoning": "Neden bu hisse en iyi secim - 1 cumle"
+  },
   "analyses": [
     {
       "symbol": "XXXXX",
       "morningGreenProbability": 0-100,
       "overnightRisk": "dusuk" | "orta" | "yuksek",
       "recommendation": "AKSAM_AL" | "BEKLE" | "UZAK_DUR",
-      "reasoning": "Kisa aciklama",
-      "keyFactors": ["faktor1", "faktor2", "faktor3"]
+      "reasoning": "Neden tavsiyesi (1-2 cumle)",
+      "positionSize": "Portfolio'nun yuzde kaci (orn: %5)",
+      "genel": "Genel durum degerlendirmesi (1 cumle)",
+      "signals": ["Sinyal1", "Sinyal2", "Sinyal3"],
+      "riskAnalysis": "Risk degerlendirmesi (2-3 cumle)",
+      "targets": {
+        "buy": "Al seviyesi",
+        "take_profit": "Kar satisi seviyesi",
+        "stop_loss": "Stop loss seviyesi"
+      },
+      "technical": "Teknik analiz detaylari (1-2 cumle)",
+      "overnight": "Overnight risk ve gap tahmini (1-2 cumle)",
+      "proTrader": "Pro trader perspektifi (1-2 cumle)"
     }
   ],
   "ranking": ["BEST_SYMBOL", "2ND", "3RD", "4TH", "WORST_SYMBOL"],
-  "topPick": {
-    "symbol": "EN_IYI_HISSE",
-    "confidence": 0-100,
-    "reasoning": "Neden bu hisse en iyi secim"
-  },
-  "marketOutlook": "Genel piyasa gorunumu ve overnight risk degerlendirmesi (max 50 kelime)",
+  "marketOutlook": "Genel piyasa gorunumu (max 30 kelime)",
   "disclaimer": "Bu bir yatirim tavsiyesi degildir, sadece teknik analizdir."
 }`;
 
