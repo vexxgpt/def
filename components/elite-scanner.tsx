@@ -324,7 +324,7 @@ export function EliteScanner() {
                     </Badge>
                   </CardTitle>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {TOTAL_STOCK_COUNT} hisse - 35+ Indikator - Min %85 Guven - TOP 5 Ultra-Elite - Pro Trader Modu
+                  {TOTAL_STOCK_COUNT} hisse - 35+ Indikator - Min %70 Guven - TOP 5 Ultra-Elite - Pro Trader Modu
                 </p>
                 </div>
               </div>
@@ -422,13 +422,13 @@ export function EliteScanner() {
                             </span>
                           )}
                           <span className="block text-xs mt-1">
-                            Minimum %85 guven, dusuk risk, en az 5 alim sinyali, pozitif trend hizalama
+                            Minimum %70 guven, dusuk risk, en az 3 alim sinyali, pozitif trend hizalama
                           </span>
                         </>
                       ) : (
                         <span className="block text-chart-4">
-                          Hicbir hisse %85 guven esigini, dusuk risk seviyesini ve diger profesyonel kriterleri karsilayamadi. 
-                          Bu, piyasa kosullarinin zorlu oldugu anlamina gelebilir. Daha sonra tekrar deneyin.
+                          Veri alinamadi veya tarama sirasinda hata olustu.
+                          Lutfen internet baglantinizi kontrol edip tekrar deneyin.
                         </span>
                       )}
                     </p>
@@ -450,7 +450,7 @@ export function EliteScanner() {
                   TOP {topResults.length} Ultra-Elite Firsatlar
                 </h3>
                 <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
-                  Min %85 Guven
+                  Min %70 Guven
                 </Badge>
               </div>
               <ScrollArea className="h-[700px]">
@@ -1463,7 +1463,7 @@ export function EliteScanner() {
               <h3 className="text-lg font-semibold text-foreground mb-2">Ultra-Elite Tarayici Hazir</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Profesyonel teknik analiz ile 610 BIST hissesini tarayin. 
-                35+ indikator, min %85 guven esigi, TOP 5 ultra-elite filtreleme.
+                35+ indikator, min %70 guven esigi, TOP 5 ultra-elite filtreleme.
                 Sadece en guvenilir firsatlar gosterilir.
               </p>
             </CardContent>

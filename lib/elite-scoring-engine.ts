@@ -1065,8 +1065,9 @@ export function filterEliteResults(results: EliteScanResult[]): EliteScanResult[
   });
 }
 
-// Pro Trader filtreleme - TOP 5 icin (kademeli)
+// Pro Trader filtreleme - TOP 5 icin (kademeli ve esnek)
 // SABAH YESIL YAKMA + OVERNIGHT ANALIZI DAHIL
+// 610 hisseden EN AZ 5 TANE MUTLAKA CIKMALI - ESNEK KRITERLER
 export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanResult[] {
   // Tum sonuclara kompozit skor ve sabah yesil skoru ekle
   const scoredResults = results.map(r => {
@@ -1074,10 +1075,8 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     const signalStrength = calculateSignalStrength(r);
     const morningGreenScore = r.morningGreen?.morningGreenScore || 50;
     const overnightScore = r.overnightAnalysis?.weeklyScore || 50;
-    const overallMorningGreenRate = r.overnightAnalysis?.overallMorningGreenRate || 50;
     
     // MASTER SKOR: Kompozit + Sabah Yesil + Overnight + Sinyal Gucu
-    // Sabah yesil yakma ve overnight icin optimize edilmis agirliklar
     const masterScore = Math.round(
       compositeScore * 0.25 +           // %25 teknik skor
       morningGreenScore * 0.30 +        // %30 sabah yesil skoru (EN ONEMLI!)
@@ -1113,42 +1112,49 @@ export function filterUltraEliteResults(results: EliteScanResult[]): EliteScanRe
     return (b as typeof b & {masterScore: number}).masterScore - (a as typeof a & {masterScore: number}).masterScore;
   });
   
-  // Minimum kriterler - GERCEK VERI GEREKLILIGI
-  const filtered = scoredResults.filter(r => {
-    // Deal breaker yok
+  // KADEME 1: Ideal kriterler (%70 guven esigi)
+  const tier1 = scoredResults.filter(r => {
     if (r.risk.dealBreakers.length > 0) return false;
-    
-    // AVOID ve SELL disinda
     if (r.decision.action === 'AVOID' || r.decision.action === 'SELL') return false;
-    
-    // Minimum kompozit skor 40
-    if (r.compositeScore < 40) return false;
-    
-    // Sinyal gucu en az 40
-    if (r.signalStrength.strength < 40) return false;
-    
-    // Risk extreme veya very_high olmamali
+    if (r.compositeScore < 50) return false;           // %50 minimum
+    if (r.signalStrength.strength < 45) return false;  // %45 sinyal gucu
     if (r.risk.level === 'extreme' || r.risk.level === 'very_high') return false;
-    
-    // OVERNIGHT VERI GEREKLI - Sahte veri kullanilmayacak
-    if (!r.overnightAnalysis) return false;
-    
     return true;
   });
   
-  // Eger yeterli sonuc yoksa, kriterleri gevset ama yine de gercek veri gerek
-  if (filtered.length < 5) {
-    const relaxedFiltered = scoredResults.filter(r => {
-      if (r.risk.dealBreakers.length > 0) return false;
-      if (r.decision.action === 'AVOID') return false;
-      if (r.compositeScore < 30) return false;
-      if (r.risk.level === 'extreme') return false;
-      // Overnight verisi olmali
-      if (!r.overnightAnalysis) return false;
-      return true;
-    });
-    return relaxedFiltered.slice(0, 5);
-  }
+  if (tier1.length >= 5) return tier1.slice(0, 5);
   
-  return filtered.slice(0, 5);
+  // KADEME 2: Orta kriterler (%60 guven esigi)
+  const tier2 = scoredResults.filter(r => {
+    if (r.risk.dealBreakers.length > 0) return false;
+    if (r.decision.action === 'AVOID') return false;
+    if (r.compositeScore < 40) return false;           // %40 minimum
+    if (r.signalStrength.strength < 35) return false;  // %35 sinyal gucu
+    if (r.risk.level === 'extreme') return false;
+    return true;
+  });
+  
+  if (tier2.length >= 5) return tier2.slice(0, 5);
+  
+  // KADEME 3: Minimum kriterler (%50 guven esigi)
+  const tier3 = scoredResults.filter(r => {
+    if (r.risk.dealBreakers.length > 0) return false;
+    if (r.compositeScore < 30) return false;           // %30 minimum
+    if (r.risk.level === 'extreme') return false;
+    return true;
+  });
+  
+  if (tier3.length >= 5) return tier3.slice(0, 5);
+  
+  // KADEME 4: En az 5 sonuc MUTLAKA dondur - sadece deal breaker ve extreme risk filtrele
+  const tier4 = scoredResults.filter(r => {
+    if (r.risk.dealBreakers.length > 0) return false;
+    if (r.risk.level === 'extreme') return false;
+    return true;
+  });
+  
+  if (tier4.length >= 5) return tier4.slice(0, 5);
+  
+  // KADEME 5: Hic filtre yok - sadece en iyi 5'i dondur (son care)
+  return scoredResults.slice(0, 5);
 }
