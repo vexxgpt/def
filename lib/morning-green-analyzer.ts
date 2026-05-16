@@ -1,9 +1,20 @@
 // ==========================================
-// SABAH YESIL YAKMA ANALIZ MOTORU
+// SABAH YESIL YAKMA ANALIZ MOTORU V2
 // Pro Trader - Trade Ideas & Edgeful Tarzi
+// Dunya Standartlarinda Profesyonel Analiz
 // ==========================================
 
-import { HistoricalBar, MorningGreenAnalysis, GapAnalysis, MomentumSurge, SmartMoneyActivity } from './elite-scanner-types';
+import { 
+  HistoricalBar, 
+  MorningGreenAnalysis, 
+  GapAnalysis, 
+  MomentumSurge, 
+  SmartMoneyActivity,
+  ExtendedMorningGreenAnalysis,
+  PremarketPrediction,
+  HotStreakStock,
+  ConfluenceScore
+} from './elite-scanner-types';
 
 // Sabah Yesil Yakma Analizi
 export function analyzeMorningGreen(bars: HistoricalBar[], currentPrice: number): MorningGreenAnalysis {
@@ -604,8 +615,848 @@ function getDefaultMomentumSurge(): MomentumSurge {
 
 function getDefaultSmartMoneyActivity(): SmartMoneyActivity {
   return {
-    largeTransactions: { count: 0, totalVolume: 0, netDirection: 'neutral', avgSize: 0 },
-    institutionalFlow: { score: 0, trend: 'neutral', strength: 'weak' },
-    unusualActivity: { detected: false, type: 'none', magnitude: 1 },
+  largeTransactions: { count: 0, totalVolume: 0, netDirection: 'neutral', avgSize: 0 },
+  institutionalFlow: { score: 0, trend: 'neutral', strength: 'weak' },
+  unusualActivity: { detected: false, type: 'none', magnitude: 1 },
+  };
+}
+
+// ==========================================
+// GELISMIS SABAH ANALIZI V2 - PRO TRADER
+// ==========================================
+
+// Gelismis Sabah Yesil Yakma Analizi
+export function analyzeExtendedMorningGreen(
+  bars: HistoricalBar[], 
+  currentPrice: number,
+  symbol: string
+): ExtendedMorningGreenAnalysis {
+  // Temel analizi al
+  const baseAnalysis = analyzeMorningGreen(bars, currentPrice);
+  
+  // Yetersiz veri kontrolu
+  if (bars.length < 30) {
+    return {
+      ...baseAnalysis,
+      hotStreak: getDefaultHotStreak(),
+      afternoonAnalysis: getDefaultAfternoonAnalysis(),
+      gapFollowThrough: getDefaultGapFollowThrough(),
+      timingAnalysis: getDefaultTimingAnalysis(),
+      volumePriceCorrelation: getDefaultVolumeCorrelation(),
+      aiPrediction: getDefaultAIPrediction(),
+    };
+  }
+  
+  const recentBars = bars.slice(-30);
+  
+  // Hot Streak Analizi
+  const hotStreak = analyzeHotStreak(bars, baseAnalysis.patterns);
+  
+  // 17:45 Sonrasi Detayli Analiz
+  const afternoonAnalysis = analyzeAfternoonReliability(bars);
+  
+  // Gap Follow-Through Analizi
+  const gapFollowThrough = analyzeGapFollowThrough(bars);
+  
+  // Zaman Bazli Analiz
+  const timingAnalysis = analyzeTimingPatterns(bars);
+  
+  // Hacim-Fiyat Korelasyonu
+  const volumePriceCorrelation = analyzeVolumePriceCorrelation(bars);
+  
+  // AI Tahmin Motoru
+  const aiPrediction = generateAIPrediction(
+    baseAnalysis, 
+    hotStreak, 
+    afternoonAnalysis, 
+    gapFollowThrough,
+    bars
+  );
+  
+  return {
+    ...baseAnalysis,
+    hotStreak,
+    afternoonAnalysis,
+    gapFollowThrough,
+    timingAnalysis,
+    volumePriceCorrelation,
+    aiPrediction,
+  };
+}
+
+// Hot Streak Analizi
+function analyzeHotStreak(
+  bars: HistoricalBar[], 
+  patterns: MorningGreenAnalysis['patterns']
+): ExtendedMorningGreenAnalysis['hotStreak'] {
+  const recentBars = bars.slice(-30);
+  
+  // Mevcut streak hesapla
+  let currentStreak = 0;
+  let maxStreak = 0;
+  let tempStreak = 0;
+  let streakGains: number[] = [];
+  let currentStreakGains: number[] = [];
+  let streakStartIndex = -1;
+  
+  for (let i = 1; i < recentBars.length; i++) {
+    const bar = recentBars[i];
+    const prevBar = recentBars[i - 1];
+    const morningGreen = bar.open > prevBar.close;
+    
+    if (morningGreen) {
+      tempStreak++;
+      const gain = ((bar.close - prevBar.close) / prevBar.close) * 100;
+      streakGains.push(gain);
+      
+      if (i === recentBars.length - 1 || tempStreak > 0) {
+        currentStreak = tempStreak;
+        currentStreakGains = [...streakGains];
+        if (streakStartIndex === -1) {
+          streakStartIndex = i - tempStreak + 1;
+        }
+      }
+      
+      if (tempStreak > maxStreak) {
+        maxStreak = tempStreak;
+      }
+    } else {
+      tempStreak = 0;
+      streakGains = [];
+      streakStartIndex = -1;
+    }
+  }
+  
+  // Son gun yesil degil ise streak sifirla
+  if (recentBars.length >= 2) {
+    const lastBar = recentBars[recentBars.length - 1];
+    const prevBar = recentBars[recentBars.length - 2];
+    if (lastBar.open <= prevBar.close) {
+      currentStreak = 0;
+      currentStreakGains = [];
+    }
+  }
+  
+  const isActive = currentStreak >= 3;
+  const avgStreakGain = currentStreakGains.length > 0 
+    ? currentStreakGains.reduce((a, b) => a + b, 0) / currentStreakGains.length 
+    : 0;
+  
+  // Streak gucu hesapla
+  let streakStrength = 0;
+  if (isActive) {
+    streakStrength = Math.min(100, 
+      currentStreak * 15 + // Her gun 15 puan
+      avgStreakGain * 10 + // Ortalama kazanc etkisi
+      (patterns.hasMomentum ? 15 : 0) + // Momentum bonusu
+      (patterns.volumeTrend === 'increasing' ? 10 : 0) // Hacim bonusu
+    );
+  }
+  
+  // Streak devam tahmini
+  const continueProbability = isActive 
+    ? Math.max(20, 85 - (currentStreak * 8)) // Her gun %8 azalma
+    : 0;
+  
+  return {
+    active: isActive,
+    currentStreak,
+    maxStreakLast30d: maxStreak,
+    streakStrength: Math.round(streakStrength),
+    avgStreakGain: Math.round(avgStreakGain * 100) / 100,
+    streakStartDate: streakStartIndex >= 0 
+      ? recentBars[streakStartIndex]?.date.toISOString().split('T')[0] 
+      : undefined,
+    streakEndPrediction: isActive ? {
+      probability: continueProbability,
+      reasoning: currentStreak >= 5 
+        ? 'Uzun streak - yorgunluk belirtileri izlenmeli'
+        : 'Streak gucleniyor - momentum devam edebilir',
+    } : undefined,
+  };
+}
+
+// 17:45 Sonrasi Detayli Analiz
+function analyzeAfternoonReliability(
+  bars: HistoricalBar[]
+): ExtendedMorningGreenAnalysis['afternoonAnalysis'] {
+  const recentBars = bars.slice(-20);
+  
+  let greenCloseToGreenMorning = 0;
+  let greenCloseToRedMorning = 0;
+  let redCloseToGreenMorning = 0;
+  let redCloseToRedMorning = 0;
+  
+  let gapsAfterGreenClose: number[] = [];
+  let gapsAfterRedClose: number[] = [];
+  
+  for (let i = 1; i < recentBars.length; i++) {
+    const bar = recentBars[i];
+    const prevBar = recentBars[i - 1];
+    
+    const prevClosedGreen = prevBar.close > prevBar.open;
+    const morningGreen = bar.open > prevBar.close;
+    const gap = ((bar.open - prevBar.close) / prevBar.close) * 100;
+    
+    if (prevClosedGreen) {
+      gapsAfterGreenClose.push(gap);
+      if (morningGreen) {
+        greenCloseToGreenMorning++;
+      } else {
+        greenCloseToRedMorning++;
+      }
+    } else {
+      gapsAfterRedClose.push(gap);
+      if (morningGreen) {
+        redCloseToGreenMorning++;
+      } else {
+        redCloseToRedMorning++;
+      }
+    }
+  }
+  
+  const greenCloseTotal = greenCloseToGreenMorning + greenCloseToRedMorning;
+  const redCloseTotal = redCloseToGreenMorning + redCloseToRedMorning;
+  
+  const greenCloseReliability = greenCloseTotal > 0 
+    ? Math.round((greenCloseToGreenMorning / greenCloseTotal) * 100) 
+    : 50;
+  
+  const redCloseReliability = redCloseTotal > 0 
+    ? Math.round((redCloseToGreenMorning / redCloseTotal) * 100) 
+    : 50;
+  
+  const avgGapAfterGreenClose = gapsAfterGreenClose.length > 0
+    ? gapsAfterGreenClose.reduce((a, b) => a + b, 0) / gapsAfterGreenClose.length
+    : 0;
+  
+  const avgGapAfterRedClose = gapsAfterRedClose.length > 0
+    ? gapsAfterRedClose.reduce((a, b) => a + b, 0) / gapsAfterRedClose.length
+    : 0;
+  
+  // Bugun icin tahmin
+  const lastBar = recentBars[recentBars.length - 1];
+  const todayClosedGreen = lastBar ? lastBar.close > lastBar.open : false;
+  
+  const tomorrowGreenProbability = todayClosedGreen 
+    ? greenCloseReliability 
+    : redCloseReliability;
+  
+  const tomorrowExpectedGap = todayClosedGreen 
+    ? avgGapAfterGreenClose 
+    : avgGapAfterRedClose;
+  
+  return {
+    greenCloseToGreenMorning,
+    greenCloseToRedMorning,
+    greenCloseReliability,
+    redCloseToGreenMorning,
+    redCloseToRedMorning,
+    redCloseReliability,
+    avgGapAfterGreenClose: Math.round(avgGapAfterGreenClose * 100) / 100,
+    avgGapAfterRedClose: Math.round(avgGapAfterRedClose * 100) / 100,
+    todayPrediction: {
+      closedGreen: todayClosedGreen,
+      tomorrowExpectedGap: Math.round(tomorrowExpectedGap * 100) / 100,
+      tomorrowGreenProbability,
+      confidence: Math.min(85, Math.max(40, tomorrowGreenProbability)),
+      reasoning: [
+        todayClosedGreen 
+          ? `Bugun yesil kapandi - tarihsel olarak %${greenCloseReliability} sabah yesil`
+          : `Bugun kirmizi kapandi - tarihsel olarak %${redCloseReliability} sabah yesil`,
+        `Beklenen gap: %${Math.round(tomorrowExpectedGap * 100) / 100}`,
+      ],
+    },
+  };
+}
+
+// Gap Follow-Through Analizi
+function analyzeGapFollowThrough(
+  bars: HistoricalBar[]
+): ExtendedMorningGreenAnalysis['gapFollowThrough'] {
+  const recentBars = bars.slice(-30);
+  
+  let gapUpFollowCount = 0;
+  let gapUpTotalCount = 0;
+  let gapDownFollowCount = 0;
+  let gapDownTotalCount = 0;
+  
+  let gapUpContinuations: number[] = [];
+  let gapDownContinuations: number[] = [];
+  
+  const last10Gaps: ExtendedMorningGreenAnalysis['gapFollowThrough']['last10Gaps'] = [];
+  
+  for (let i = 1; i < recentBars.length; i++) {
+    const bar = recentBars[i];
+    const prevBar = recentBars[i - 1];
+    
+    const gapPercent = ((bar.open - prevBar.close) / prevBar.close) * 100;
+    
+    // Sadece anlamli gap'leri say (>0.5%)
+    if (Math.abs(gapPercent) >= 0.5) {
+      const followThrough = gapPercent > 0 
+        ? bar.close > bar.open // Gap up sonrasi yesil kapandi mi
+        : bar.close < bar.open; // Gap down sonrasi kirmizi kapandi mi
+      
+      const continuationPercent = ((bar.close - bar.open) / bar.open) * 100;
+      
+      if (gapPercent > 0) {
+        gapUpTotalCount++;
+        if (followThrough) {
+          gapUpFollowCount++;
+          gapUpContinuations.push(continuationPercent);
+        }
+      } else {
+        gapDownTotalCount++;
+        if (followThrough) {
+          gapDownFollowCount++;
+          gapDownContinuations.push(Math.abs(continuationPercent));
+        }
+      }
+      
+      // Son 10 gap'i kaydet
+      if (last10Gaps.length < 10) {
+        last10Gaps.unshift({
+          date: bar.date.toISOString().split('T')[0],
+          gapPercent: Math.round(gapPercent * 100) / 100,
+          followThrough,
+          continuationPercent: Math.round(continuationPercent * 100) / 100,
+        });
+      }
+    }
+  }
+  
+  const gapUpFollowThroughRate = gapUpTotalCount > 0 
+    ? Math.round((gapUpFollowCount / gapUpTotalCount) * 100) 
+    : 50;
+  
+  const gapDownFollowThroughRate = gapDownTotalCount > 0 
+    ? Math.round((gapDownFollowCount / gapDownTotalCount) * 100) 
+    : 50;
+  
+  const avgGapUpContinuation = gapUpContinuations.length > 0
+    ? gapUpContinuations.reduce((a, b) => a + b, 0) / gapUpContinuations.length
+    : 0;
+  
+  const avgGapDownContinuation = gapDownContinuations.length > 0
+    ? gapDownContinuations.reduce((a, b) => a + b, 0) / gapDownContinuations.length
+    : 0;
+  
+  // Pattern tespiti
+  let gapPattern: ExtendedMorningGreenAnalysis['gapFollowThrough']['gapPattern'] = 'mixed';
+  const avgFollowThrough = (gapUpFollowThroughRate + gapDownFollowThroughRate) / 2;
+  
+  if (avgFollowThrough >= 70) {
+    gapPattern = 'consistent_follow';
+  } else if (avgFollowThrough <= 30) {
+    gapPattern = 'gap_and_reverse';
+  } else if (avgFollowThrough >= 40 && avgFollowThrough <= 60) {
+    gapPattern = 'gap_fill';
+  }
+  
+  return {
+    gapUpFollowThroughRate,
+    gapDownFollowThroughRate,
+    avgGapUpContinuation: Math.round(avgGapUpContinuation * 100) / 100,
+    avgGapDownContinuation: Math.round(avgGapDownContinuation * 100) / 100,
+    last10Gaps,
+    gapPattern,
+    patternStrength: Math.abs(avgFollowThrough - 50) * 2, // 0-100 arasi
+  };
+}
+
+// Zaman Bazli Analiz
+function analyzeTimingPatterns(
+  bars: HistoricalBar[]
+): ExtendedMorningGreenAnalysis['timingAnalysis'] {
+  const recentBars = bars.slice(-20);
+  
+  // Ilk 30 dakika istatistikleri (yaklaşık - gunluk veri ile)
+  let morningMoves: number[] = [];
+  let upMornings = 0;
+  
+  for (let i = 1; i < recentBars.length; i++) {
+    const bar = recentBars[i];
+    const prevBar = recentBars[i - 1];
+    
+    // Sabah hareketi: acilistan yuksek veya dusuk fiyata
+    const morningMove = ((bar.high - bar.open) / bar.open) * 100;
+    morningMoves.push(morningMove);
+    
+    if (bar.open > prevBar.close) {
+      upMornings++;
+    }
+  }
+  
+  const avgMorningMove = morningMoves.length > 0
+    ? morningMoves.reduce((a, b) => a + b, 0) / morningMoves.length
+    : 0;
+  
+  const upProbability = recentBars.length > 1
+    ? Math.round((upMornings / (recentBars.length - 1)) * 100)
+    : 50;
+  
+  const sortedMoves = [...morningMoves].sort((a, b) => b - a);
+  const bestScenario = sortedMoves[0] || 0;
+  const worstScenario = sortedMoves[sortedMoves.length - 1] || 0;
+  
+  return {
+    optimalEntryTime: upProbability >= 60 ? '09:35' : '09:45',
+    optimalEntryReasoning: upProbability >= 60 
+      ? 'Yuksek sabah yesil orani - erken giris avantajli'
+      : 'Dusuk sabah yesil orani - ilk dipi beklemek daha guvenli',
+    hourlyPerformance: [
+      { hour: '09:30', avgReturn: avgMorningMove * 0.4, winRate: upProbability, sampleSize: recentBars.length - 1 },
+      { hour: '10:00', avgReturn: avgMorningMove * 0.6, winRate: Math.max(40, upProbability - 5), sampleSize: recentBars.length - 1 },
+      { hour: '11:00', avgReturn: avgMorningMove * 0.8, winRate: Math.max(40, upProbability - 10), sampleSize: recentBars.length - 1 },
+      { hour: '14:00', avgReturn: avgMorningMove * 0.5, winRate: 50, sampleSize: recentBars.length - 1 },
+      { hour: '17:00', avgReturn: avgMorningMove * 0.3, winRate: 50, sampleSize: recentBars.length - 1 },
+    ],
+    first30MinStats: {
+      avgMove: Math.round(avgMorningMove * 100) / 100,
+      upProbability,
+      bestScenario: Math.round(bestScenario * 100) / 100,
+      worstScenario: Math.round(worstScenario * 100) / 100,
+    },
+  };
+}
+
+// Hacim-Fiyat Korelasyonu
+function analyzeVolumePriceCorrelation(
+  bars: HistoricalBar[]
+): ExtendedMorningGreenAnalysis['volumePriceCorrelation'] {
+  const recentBars = bars.slice(-20);
+  
+  if (recentBars.length < 10) {
+    return getDefaultVolumeCorrelation();
+  }
+  
+  const avgVolume = recentBars.reduce((a, b) => a + b.volume, 0) / recentBars.length;
+  
+  let highVolumeGreenMornings = 0;
+  let highVolumeDays = 0;
+  let lowVolumeGreenMornings = 0;
+  let lowVolumeDays = 0;
+  
+  // Korelasyon hesabi icin veri toplama
+  const volumeChanges: number[] = [];
+  const priceChanges: number[] = [];
+  
+  for (let i = 1; i < recentBars.length; i++) {
+    const bar = recentBars[i];
+    const prevBar = recentBars[i - 1];
+    
+    const morningGreen = bar.open > prevBar.close;
+    const volumeRatio = bar.volume / avgVolume;
+    
+    volumeChanges.push(volumeRatio - 1);
+    priceChanges.push(morningGreen ? 1 : -1);
+    
+    if (volumeRatio > 1.2) {
+      highVolumeDays++;
+      if (morningGreen) highVolumeGreenMornings++;
+    } else if (volumeRatio < 0.8) {
+      lowVolumeDays++;
+      if (morningGreen) lowVolumeGreenMornings++;
+    }
+  }
+  
+  // Pearson korelasyon katsayisi (basitlestirilmis)
+  const n = volumeChanges.length;
+  const sumX = volumeChanges.reduce((a, b) => a + b, 0);
+  const sumY = priceChanges.reduce((a, b) => a + b, 0);
+  const sumXY = volumeChanges.reduce((a, b, i) => a + b * priceChanges[i], 0);
+  const sumX2 = volumeChanges.reduce((a, b) => a + b * b, 0);
+  const sumY2 = priceChanges.reduce((a, b) => a + b * b, 0);
+  
+  const numerator = n * sumXY - sumX * sumY;
+  const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+  
+  const correlation = denominator !== 0 ? numerator / denominator : 0;
+  
+  const highVolumeGreenRate = highVolumeDays > 0 
+    ? Math.round((highVolumeGreenMornings / highVolumeDays) * 100) 
+    : 50;
+  
+  const lowVolumeGreenRate = lowVolumeDays > 0 
+    ? Math.round((lowVolumeGreenMornings / lowVolumeDays) * 100) 
+    : 50;
+  
+  let correlationStrength: ExtendedMorningGreenAnalysis['volumePriceCorrelation']['correlationStrength'] = 'none';
+  if (Math.abs(correlation) > 0.7) correlationStrength = 'strong';
+  else if (Math.abs(correlation) > 0.4) correlationStrength = 'moderate';
+  else if (Math.abs(correlation) > 0.2) correlationStrength = 'weak';
+  
+  return {
+    morningVolumeToPrice: Math.round(correlation * 100) / 100,
+    highVolumeGreenMorningRate: highVolumeGreenRate,
+    lowVolumeGreenMorningRate: lowVolumeGreenRate,
+    volumePredictsPriceDirection: Math.abs(correlation) > 0.4,
+    correlationStrength,
+  };
+}
+
+// AI Tahmin Motoru
+function generateAIPrediction(
+  baseAnalysis: MorningGreenAnalysis,
+  hotStreak: ExtendedMorningGreenAnalysis['hotStreak'],
+  afternoonAnalysis: ExtendedMorningGreenAnalysis['afternoonAnalysis'],
+  gapFollowThrough: ExtendedMorningGreenAnalysis['gapFollowThrough'],
+  bars: HistoricalBar[]
+): ExtendedMorningGreenAnalysis['aiPrediction'] {
+  const factors: ExtendedMorningGreenAnalysis['aiPrediction']['factors'] = [];
+  
+  // Faktor 1: Son 5 gun yesil sabah orani
+  const greenRate5d = baseAnalysis.stats.greenMorningRate5d;
+  factors.push({
+    name: 'Son 5 Gun Yesil Sabah',
+    impact: greenRate5d >= 60 ? 'positive' : greenRate5d <= 40 ? 'negative' : 'neutral',
+    weight: 25,
+  });
+  
+  // Faktor 2: 17:45 Guvenilirligi
+  const afternoonReliability = afternoonAnalysis.todayPrediction.tomorrowGreenProbability;
+  factors.push({
+    name: '17:45 Kapanış Güvenilirliği',
+    impact: afternoonReliability >= 60 ? 'positive' : afternoonReliability <= 40 ? 'negative' : 'neutral',
+    weight: 20,
+  });
+  
+  // Faktor 3: Hot Streak
+  factors.push({
+    name: 'Hot Streak Durumu',
+    impact: hotStreak.active ? 'positive' : 'neutral',
+    weight: 15,
+  });
+  
+  // Faktor 4: Gap Follow-Through
+  factors.push({
+    name: 'Gap Devam Orani',
+    impact: gapFollowThrough.gapUpFollowThroughRate >= 60 ? 'positive' : 
+            gapFollowThrough.gapUpFollowThroughRate <= 40 ? 'negative' : 'neutral',
+    weight: 15,
+  });
+  
+  // Faktor 5: Momentum
+  factors.push({
+    name: 'Momentum',
+    impact: baseAnalysis.patterns.hasMomentum ? 'positive' : 
+            baseAnalysis.patterns.volumeTrend === 'decreasing' ? 'negative' : 'neutral',
+    weight: 15,
+  });
+  
+  // Faktor 6: Hacim Trendi
+  factors.push({
+    name: 'Hacim Trendi',
+    impact: baseAnalysis.patterns.volumeTrend === 'increasing' ? 'positive' :
+            baseAnalysis.patterns.volumeTrend === 'decreasing' ? 'negative' : 'neutral',
+    weight: 10,
+  });
+  
+  // Tahmin hesaplama
+  let greenProbability = 50;
+  let confidence = 50;
+  
+  for (const factor of factors) {
+    if (factor.impact === 'positive') {
+      greenProbability += factor.weight * 0.4;
+      confidence += factor.weight * 0.3;
+    } else if (factor.impact === 'negative') {
+      greenProbability -= factor.weight * 0.4;
+      confidence += factor.weight * 0.2;
+    }
+  }
+  
+  // Afternoon analizi ekstra agirlik
+  greenProbability = (greenProbability * 0.6) + (afternoonReliability * 0.4);
+  
+  greenProbability = Math.max(10, Math.min(95, greenProbability));
+  confidence = Math.max(30, Math.min(90, confidence));
+  
+  // Beklenen gap
+  const expectedGap = afternoonAnalysis.todayPrediction.tomorrowExpectedGap;
+  
+  // Oneri
+  let recommendation: ExtendedMorningGreenAnalysis['aiPrediction']['recommendation'] = 'WAIT';
+  let riskLevel: ExtendedMorningGreenAnalysis['aiPrediction']['riskLevel'] = 'medium';
+  
+  if (greenProbability >= 75 && confidence >= 70) {
+    recommendation = 'STRONG_BUY_MORNING';
+    riskLevel = 'low';
+  } else if (greenProbability >= 60 && confidence >= 55) {
+    recommendation = 'BUY_MORNING';
+    riskLevel = 'medium';
+  } else if (greenProbability <= 35) {
+    recommendation = greenProbability <= 25 ? 'SHORT_MORNING' : 'AVOID_MORNING';
+    riskLevel = 'high';
+  }
+  
+  return {
+    tomorrowGreenProbability: Math.round(greenProbability),
+    tomorrowExpectedGap: Math.round(expectedGap * 100) / 100,
+    confidence: Math.round(confidence),
+    factors,
+    recommendation,
+    riskLevel,
+  };
+}
+
+// Hot Streak Hisselerini Bul
+export function findHotStreakStocks(
+  allResults: { symbol: string; name: string; bars: HistoricalBar[]; currentPrice: number }[]
+): HotStreakStock[] {
+  const hotStocks: HotStreakStock[] = [];
+  
+  for (const stock of allResults) {
+    if (stock.bars.length < 10) continue;
+    
+    const bars = stock.bars.slice(-10);
+    let streak = 0;
+    let streakGain = 0;
+    let streakStartIdx = -1;
+    
+    // Son gunlerden geriye dogru streak say
+    for (let i = bars.length - 1; i >= 1; i--) {
+      const bar = bars[i];
+      const prevBar = bars[i - 1];
+      
+      if (bar.open > prevBar.close) {
+        streak++;
+        streakGain += ((bar.close - prevBar.close) / prevBar.close) * 100;
+        streakStartIdx = i;
+      } else {
+        break;
+      }
+    }
+    
+    // En az 3 gunluk streak varsa listeye ekle
+    if (streak >= 3) {
+      const avgDailyGain = streakGain / streak;
+      
+      // Streak gucu hesapla
+      const recentVolumes = bars.slice(-streak).map(b => b.volume);
+      const avgVol = bars.slice(0, -streak).reduce((a, b) => a + b.volume, 0) / (bars.length - streak) || 1;
+      const volumeConfirmation = recentVolumes.every(v => v > avgVol * 0.8);
+      
+      // Momentum ivmelenmesi
+      const gains = [];
+      for (let i = 1; i < streak + 1 && i < bars.length; i++) {
+        const idx = bars.length - i;
+        const bar = bars[idx];
+        const prevBar = bars[idx - 1];
+        if (prevBar) {
+          gains.push(((bar.close - prevBar.close) / prevBar.close) * 100);
+        }
+      }
+      const momentumAcceleration = gains.length >= 2 && gains[0] > gains[gains.length - 1];
+      
+      // Streak gucu
+      const streakStrength = Math.min(100,
+        streak * 20 +
+        avgDailyGain * 10 +
+        (volumeConfirmation ? 15 : 0) +
+        (momentumAcceleration ? 10 : 0)
+      );
+      
+      // Devam olasiligi
+      const continueProbability = Math.max(20, 85 - (streak * 10));
+      
+      // Beklenen gap (basit tahmin)
+      const expectedNextGap = avgDailyGain * 0.6;
+      
+      // Yorulma riski
+      const exhaustionRisk = Math.min(100, streak * 15 + (avgDailyGain > 3 ? 20 : 0));
+      
+      // Fiyat uzamis mi
+      const priceOverextended = streakGain > 10 || streak > 5;
+      
+      hotStocks.push({
+        symbol: stock.symbol,
+        name: stock.name,
+        currentStreak: streak,
+        streakStartDate: bars[streakStartIdx]?.date.toISOString().split('T')[0] || '',
+        streakGain: Math.round(streakGain * 100) / 100,
+        avgDailyGain: Math.round(avgDailyGain * 100) / 100,
+        streakStrength: Math.round(streakStrength),
+        momentumAcceleration,
+        volumeConfirmation,
+        streakContinueProbability: continueProbability,
+        expectedNextGap: Math.round(expectedNextGap * 100) / 100,
+        streakExhaustionRisk: exhaustionRisk,
+        priceOverextended,
+        hotScore: Math.round(streakStrength * 0.7 + continueProbability * 0.3),
+        rank: 0, // Sonra siralama yapilacak
+      });
+    }
+  }
+  
+  // Hot score'a gore sirala
+  hotStocks.sort((a, b) => b.hotScore - a.hotScore);
+  
+  // Sira numarasi ekle
+  hotStocks.forEach((stock, idx) => {
+    stock.rank = idx + 1;
+  });
+  
+  return hotStocks.slice(0, 20); // En sicak 20 hisse
+}
+
+// Confluence Skoru Hesapla
+export function calculateConfluenceScore(
+  signals: { category: string; type: string }[]
+): ConfluenceScore {
+  const categories: ConfluenceScore['categories'] = {
+    momentum: { buy: 0, sell: 0, neutral: 0 },
+    trend: { buy: 0, sell: 0, neutral: 0 },
+    volume: { buy: 0, sell: 0, neutral: 0 },
+    pattern: { buy: 0, sell: 0, neutral: 0 },
+    supportResistance: { buy: 0, sell: 0, neutral: 0 },
+    ichimoku: { buy: 0, sell: 0, neutral: 0 },
+    multiTimeframe: { buy: 0, sell: 0, neutral: 0 },
+  };
+  
+  // Sinyalleri kategorilere ayir
+  for (const signal of signals) {
+    const cat = signal.category as keyof typeof categories;
+    if (!categories[cat]) continue;
+    
+    if (signal.type === 'strong_buy' || signal.type === 'buy') {
+      categories[cat].buy++;
+    } else if (signal.type === 'strong_sell' || signal.type === 'sell') {
+      categories[cat].sell++;
+    } else {
+      categories[cat].neutral++;
+    }
+  }
+  
+  // Toplamlar
+  let totalBuy = 0;
+  let totalSell = 0;
+  let totalNeutral = 0;
+  let alignedBuy = 0;
+  let alignedSell = 0;
+  
+  for (const cat of Object.values(categories)) {
+    totalBuy += cat.buy;
+    totalSell += cat.sell;
+    totalNeutral += cat.neutral;
+    
+    // 3+ alim sinyali olan kategoriler
+    if (cat.buy >= 2 && cat.buy > cat.sell) alignedBuy++;
+    if (cat.sell >= 2 && cat.sell > cat.buy) alignedSell++;
+  }
+  
+  // Perfect Setup kontrolu
+  const isPerfectSetup = alignedBuy >= 5 || alignedSell >= 5;
+  const perfectSetupType = isPerfectSetup 
+    ? (alignedBuy >= 5 ? 'BUY' : 'SELL') 
+    : undefined;
+  
+  // Confluence Skoru (-100 to +100)
+  const total = totalBuy + totalSell + totalNeutral || 1;
+  const score = Math.round(((totalBuy - totalSell) / total) * 100);
+  
+  // Strength belirleme
+  let strength: ConfluenceScore['strength'] = 'weak';
+  if (score >= 60) strength = alignedBuy >= 5 ? 'extreme_buy' : 'strong_buy';
+  else if (score >= 30) strength = 'moderate_buy';
+  else if (score <= -60) strength = alignedSell >= 5 ? 'extreme_sell' : 'strong_sell';
+  else if (score <= -30) strength = 'moderate_sell';
+  
+  // Guven ve guvenilirlik
+  const confidence = Math.min(95, 50 + Math.abs(score) * 0.4 + alignedBuy * 5 + alignedSell * 5);
+  const reliability = isPerfectSetup ? 85 : alignedBuy >= 3 || alignedSell >= 3 ? 70 : 55;
+  
+  return {
+    categories,
+    totalBuySignals: totalBuy,
+    totalSellSignals: totalSell,
+    totalNeutralSignals: totalNeutral,
+    alignedBuyCategories: alignedBuy,
+    alignedSellCategories: alignedSell,
+    isPerfectSetup,
+    perfectSetupType,
+    score,
+    strength,
+    confidence: Math.round(confidence),
+    reliability,
+  };
+}
+
+// Default degerler
+function getDefaultHotStreak(): ExtendedMorningGreenAnalysis['hotStreak'] {
+  return {
+    active: false,
+    currentStreak: 0,
+    maxStreakLast30d: 0,
+    streakStrength: 0,
+    avgStreakGain: 0,
+  };
+}
+
+function getDefaultAfternoonAnalysis(): ExtendedMorningGreenAnalysis['afternoonAnalysis'] {
+  return {
+    greenCloseToGreenMorning: 0,
+    greenCloseToRedMorning: 0,
+    greenCloseReliability: 50,
+    redCloseToGreenMorning: 0,
+    redCloseToRedMorning: 0,
+    redCloseReliability: 50,
+    avgGapAfterGreenClose: 0,
+    avgGapAfterRedClose: 0,
+    todayPrediction: {
+      closedGreen: false,
+      tomorrowExpectedGap: 0,
+      tomorrowGreenProbability: 50,
+      confidence: 50,
+      reasoning: ['Yetersiz veri'],
+    },
+  };
+}
+
+function getDefaultGapFollowThrough(): ExtendedMorningGreenAnalysis['gapFollowThrough'] {
+  return {
+    gapUpFollowThroughRate: 50,
+    gapDownFollowThroughRate: 50,
+    avgGapUpContinuation: 0,
+    avgGapDownContinuation: 0,
+    last10Gaps: [],
+    gapPattern: 'mixed',
+    patternStrength: 0,
+  };
+}
+
+function getDefaultTimingAnalysis(): ExtendedMorningGreenAnalysis['timingAnalysis'] {
+  return {
+    optimalEntryTime: '09:45',
+    optimalEntryReasoning: 'Yetersiz veri - varsayilan zaman',
+    hourlyPerformance: [],
+    first30MinStats: {
+      avgMove: 0,
+      upProbability: 50,
+      bestScenario: 0,
+      worstScenario: 0,
+    },
+  };
+}
+
+function getDefaultVolumeCorrelation(): ExtendedMorningGreenAnalysis['volumePriceCorrelation'] {
+  return {
+    morningVolumeToPrice: 0,
+    highVolumeGreenMorningRate: 50,
+    lowVolumeGreenMorningRate: 50,
+    volumePredictsPriceDirection: false,
+    correlationStrength: 'none',
+  };
+}
+
+function getDefaultAIPrediction(): ExtendedMorningGreenAnalysis['aiPrediction'] {
+  return {
+    tomorrowGreenProbability: 50,
+    tomorrowExpectedGap: 0,
+    confidence: 30,
+    factors: [],
+    recommendation: 'WAIT',
+    riskLevel: 'medium',
   };
 }

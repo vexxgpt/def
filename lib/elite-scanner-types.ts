@@ -662,6 +662,331 @@ export const ELITE_SIGNAL_POINTS = {
   MTF_ALL_ALIGNED_BEARISH: { points: -35, weight: 5, reliability: 90 },
 } as const;
 
+// ==========================================
+// GELISMIS SABAH YESIL YAKMA ANALIZI - V2
+// Dunya Standartlarinda Profesyonel Trader
+// ==========================================
+
+export interface ExtendedMorningGreenAnalysis extends MorningGreenAnalysis {
+  // Hot Streak Analizi (3+ gun ust uste yesil)
+  hotStreak: {
+    active: boolean;
+    currentStreak: number;
+    maxStreakLast30d: number;
+    streakStrength: number; // 0-100
+    avgStreakGain: number; // Streak suresince ortalama kazanc %
+    streakStartDate?: string;
+    streakEndPrediction?: {
+      probability: number;
+      reasoning: string;
+    };
+  };
+  
+  // 17:45 Sonrasi Detayli Analiz
+  afternoonAnalysis: {
+    // Son 20 gunde 17:45 yesil kapanip ertesi sabah ne oldu
+    greenCloseToGreenMorning: number; // Kac kez sabah yesil
+    greenCloseToRedMorning: number; // Kac kez sabah kirmizi
+    greenCloseReliability: number; // % guvenilirlik
+    
+    // Son 20 gunde 17:45 kirmizi kapanip ertesi sabah ne oldu
+    redCloseToGreenMorning: number;
+    redCloseToRedMorning: number;
+    redCloseReliability: number;
+    
+    // Gap davranisi
+    avgGapAfterGreenClose: number; // Yesil kapanistan sonra ortalama gap
+    avgGapAfterRedClose: number;
+    
+    // Bugunun tahmini (17:45 sonrasi icin)
+    todayPrediction: {
+      closedGreen: boolean;
+      tomorrowExpectedGap: number;
+      tomorrowGreenProbability: number;
+      confidence: number;
+      reasoning: string[];
+    };
+  };
+  
+  // Gap Follow-Through Analizi
+  gapFollowThrough: {
+    // Gap sonrasi fiyat davranisi
+    gapUpFollowThroughRate: number; // Gap up sonrasi yukari devam %
+    gapDownFollowThroughRate: number; // Gap down sonrasi asagi devam %
+    avgGapUpContinuation: number; // Gap up sonrasi ek kazanc %
+    avgGapDownContinuation: number;
+    
+    // Tarihsel gap verileri
+    last10Gaps: {
+      date: string;
+      gapPercent: number;
+      followThrough: boolean;
+      continuationPercent: number;
+    }[];
+    
+    // Pattern
+    gapPattern: 'consistent_follow' | 'gap_and_reverse' | 'gap_fill' | 'mixed';
+    patternStrength: number;
+  };
+  
+  // Zaman Bazli Analiz
+  timingAnalysis: {
+    // En iyi giris zamani
+    optimalEntryTime: string; // HH:MM formati
+    optimalEntryReasoning: string;
+    
+    // Saat bazli performans
+    hourlyPerformance: {
+      hour: string; // "09:30", "10:00", vs.
+      avgReturn: number;
+      winRate: number;
+      sampleSize: number;
+    }[];
+    
+    // Ilk 30 dakika analizi
+    first30MinStats: {
+      avgMove: number;
+      upProbability: number;
+      bestScenario: number;
+      worstScenario: number;
+    };
+  };
+  
+  // Hacim-Fiyat Korelasyonu
+  volumePriceCorrelation: {
+    morningVolumeToPrice: number; // -1 to 1 korelasyon
+    highVolumeGreenMorningRate: number; // Yuksek hacimli gunlerde yesil sabah orani
+    lowVolumeGreenMorningRate: number;
+    volumePredictsPriceDirection: boolean;
+    correlationStrength: 'strong' | 'moderate' | 'weak' | 'none';
+  };
+  
+  // Sektor Karsilastirmasi
+  sectorComparison?: {
+    sectorAvgMorningGreenScore: number;
+    stockVsSector: number; // Hisse skoru - sektor ortalamasi
+    sectorRank: number; // Sektordeki sira
+    sectorTotalStocks: number;
+    betterThanSectorPercent: number;
+  };
+  
+  // AI Tahmin Motoru
+  aiPrediction: {
+    tomorrowGreenProbability: number; // %
+    tomorrowExpectedGap: number; // %
+    confidence: number;
+    factors: {
+      name: string;
+      impact: 'positive' | 'negative' | 'neutral';
+      weight: number;
+    }[];
+    recommendation: 'STRONG_BUY_MORNING' | 'BUY_MORNING' | 'WAIT' | 'AVOID_MORNING' | 'SHORT_MORNING';
+    riskLevel: 'low' | 'medium' | 'high';
+  };
+}
+
+// Premarket Tahmini
+export interface PremarketPrediction {
+  symbol: string;
+  
+  // Gap Tahmini
+  predictedGap: {
+    percent: number;
+    direction: 'up' | 'down' | 'flat';
+    confidence: number;
+    range: {
+      min: number;
+      max: number;
+    };
+  };
+  
+  // Momentum Tahmini
+  momentumForecast: {
+    direction: 'bullish' | 'bearish' | 'neutral';
+    strength: number; // 0-100
+    expectedMove: number; // %
+    timeHorizon: '30min' | '1hour' | 'morning_session';
+  };
+  
+  // Pattern Eslestirme
+  patternMatch: {
+    similarDays: number; // Son 60 gunde benzer pattern sayisi
+    avgOutcome: number; // Benzer gunlerde ortalama sonuc %
+    successRate: number; // % basari orani
+    bestCase: number;
+    worstCase: number;
+    matchedPattern: string; // Pattern ismi
+  };
+  
+  // Hacim Beklentisi
+  volumeExpectation: {
+    expectedRatio: number; // Ortalamaya gore beklenen hacim
+    significance: 'very_high' | 'high' | 'normal' | 'low';
+  };
+  
+  // Risk Skoru
+  premarketRisk: {
+    score: number; // 0-100
+    level: 'low' | 'medium' | 'high';
+    warnings: string[];
+  };
+  
+  // Strateji Onerisi
+  strategy: {
+    action: 'PREMARKET_BUY' | 'OPEN_BUY' | 'WAIT_PULLBACK' | 'AVOID';
+    entryPrice?: number;
+    stopLoss?: number;
+    target1?: number;
+    target2?: number;
+    reasoning: string[];
+  };
+  
+  lastUpdated: Date;
+}
+
+// Confluence Skoru (Multi-Signal Hizalama)
+export interface ConfluenceScore {
+  // Kategori bazinda sinyal sayilari
+  categories: {
+    momentum: { buy: number; sell: number; neutral: number };
+    trend: { buy: number; sell: number; neutral: number };
+    volume: { buy: number; sell: number; neutral: number };
+    pattern: { buy: number; sell: number; neutral: number };
+    supportResistance: { buy: number; sell: number; neutral: number };
+    ichimoku: { buy: number; sell: number; neutral: number };
+    multiTimeframe: { buy: number; sell: number; neutral: number };
+  };
+  
+  // Confluence Metrikleri
+  totalBuySignals: number;
+  totalSellSignals: number;
+  totalNeutralSignals: number;
+  
+  // Hizalanmis kategori sayisi (3+ alim sinyali olan kategoriler)
+  alignedBuyCategories: number;
+  alignedSellCategories: number;
+  
+  // Perfect Setup (5+ kategori hizalanmis)
+  isPerfectSetup: boolean;
+  perfectSetupType?: 'BUY' | 'SELL';
+  
+  // Confluence Skoru
+  score: number; // -100 to +100
+  strength: 'extreme_buy' | 'strong_buy' | 'moderate_buy' | 'weak' | 'moderate_sell' | 'strong_sell' | 'extreme_sell';
+  
+  // Guven
+  confidence: number; // 0-100
+  reliability: number; // Tarihsel basari orani
+}
+
+// Hot Streak Hissesi
+export interface HotStreakStock {
+  symbol: string;
+  name: string;
+  
+  // Streak Bilgisi
+  currentStreak: number; // Ust uste kac gun yesil sabah
+  streakStartDate: string;
+  streakGain: number; // Streak basladigindan beri toplam kazanc %
+  avgDailyGain: number; // Streak suresince ortalama gunluk kazanc
+  
+  // Streak Gucu
+  streakStrength: number; // 0-100
+  momentumAcceleration: boolean; // Momentum hizlaniyor mu
+  volumeConfirmation: boolean; // Hacim dogruluyor mu
+  
+  // Tahminler
+  streakContinueProbability: number; // Streak devam etme olasiligi %
+  expectedNextGap: number; // Yarin beklenen gap %
+  
+  // Risk
+  streakExhaustionRisk: number; // Streak yorulmasi riski
+  priceOverextended: boolean; // Fiyat cok uzamis mi
+  
+  // Skor
+  hotScore: number; // 0-100 genel sicaklik skoru
+  rank: number; // Hot streak siralamasindaki yeri
+}
+
+// Backtest Sonucu
+export interface BacktestResult {
+  // Strateji Bilgisi
+  strategyName: string;
+  period: string; // "60_days", "90_days", "1_year"
+  
+  // Sonuclar
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number; // %
+  
+  // Kar/Zarar
+  totalReturn: number; // %
+  avgWinPercent: number;
+  avgLossPercent: number;
+  profitFactor: number; // Toplam kar / Toplam zarar
+  
+  // Risk Metrikleri
+  maxDrawdown: number; // %
+  sharpeRatio: number;
+  sortinoRatio: number;
+  
+  // Trade Istatistikleri
+  avgHoldingPeriod: number; // Gun
+  bestTrade: { date: string; return: number };
+  worstTrade: { date: string; return: number };
+  
+  // Zaman Analizi
+  bestDayOfWeek: string;
+  worstDayOfWeek: string;
+  bestMonth: string;
+  
+  // Guven
+  statisticalSignificance: number; // % anlamlilik
+  sampleSizeAdequate: boolean;
+}
+
+// Sabah Tarama Sonucu
+export interface MorningScanResult extends EliteScanResult {
+  // Gelismis Sabah Analizi
+  extendedMorningGreen: ExtendedMorningGreenAnalysis;
+  
+  // Premarket Tahmini
+  premarketPrediction: PremarketPrediction;
+  
+  // Confluence
+  confluence: ConfluenceScore;
+  
+  // Hot Streak (eger varsa)
+  hotStreak?: HotStreakStock;
+  
+  // Sabah Ozel Skoru
+  morningScore: {
+    total: number; // 0-100
+    breakdown: {
+      greenHistory: number; // 30 puan max
+      afternoonReliability: number; // 25 puan max
+      gapFollowThrough: number; // 20 puan max
+      hotStreakBonus: number; // 15 puan max
+      confluenceBonus: number; // 10 puan max
+    };
+    grade: 'S' | 'A' | 'B' | 'C' | 'D' | 'F';
+  };
+  
+  // Sabah Stratejisi
+  morningStrategy: {
+    action: 'STRONG_MORNING_BUY' | 'MORNING_BUY' | 'WAIT_FOR_DIP' | 'DAY_TRADE_ONLY' | 'AVOID';
+    entryTiming: 'PREMARKET' | 'OPEN' | 'FIRST_PULLBACK' | 'BREAKOUT';
+    entryPrice?: number;
+    stopLoss: number;
+    target1: number;
+    target2?: number;
+    riskReward: number;
+    confidence: number;
+    reasoning: string[];
+  };
+}
+
 // Risk Esikleri
 export const RISK_THRESHOLDS = {
   MAX_VOLATILITY_ATR_PERCENT: 5, // ATR %5'ten fazlaysa tehlikeli

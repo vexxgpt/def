@@ -47,7 +47,21 @@ import { useTradingStore } from "@/lib/store";
 import { calculateEliteIndicators } from "@/lib/elite-indicators";
 import { analyzeEliteSignals } from "@/lib/elite-signal-engine";
 import { generateEliteScanResult, sortEliteResults, filterEliteResults, filterUltraEliteResults, calculateCompositeScore, calculateSignalStrength } from "@/lib/elite-scoring-engine";
-import type { EliteScanResult, ScanProgress, HistoricalDataResponse } from "@/lib/elite-scanner-types";
+import { 
+  analyzeExtendedMorningGreen, 
+  findHotStreakStocks 
+} from "@/lib/morning-green-analyzer";
+import { 
+  generatePremarketPrediction,
+  runMorningScan
+} from "@/lib/premarket-scanner";
+import type { 
+  EliteScanResult, 
+  ScanProgress, 
+  HistoricalDataResponse,
+  HotStreakStock,
+  ExtendedMorningGreenAnalysis 
+} from "@/lib/elite-scanner-types";
 
 const BATCH_SIZE = 8;
 
@@ -66,8 +80,10 @@ export function EliteScanner() {
   const [topResults, setTopResults] = useState<EliteScanResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<EliteScanResult | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [scanComplete, setScanComplete] = useState(false);
-
+const [scanComplete, setScanComplete] = useState(false);
+  const [hotStreakStocks, setHotStreakStocks] = useState<HotStreakStock[]>([]);
+  const [extendedAnalysis, setExtendedAnalysis] = useState<Map<string, ExtendedMorningGreenAnalysis>>(new Map());
+  
   const { addAlert } = useTradingStore();
 
   const startEliteScan = useCallback(async () => {
@@ -154,9 +170,26 @@ export function EliteScanner() {
                   fiftyTwoWeekLow: stockData.currentQuote.fiftyTwoWeekLow || Math.min(...stockData.bars.map(b => b.low)),
                   indicators,
                   signals,
-                });
+});
 
-                results.push(result);
+                                // Gelismis Sabah Analizi Ekle
+                                const extMorning = analyzeExtendedMorningGreen(
+                                  stockData.bars.map(b => ({
+                                    ...b,
+                                    date: new Date(b.date)
+                                  })),
+                                  stockData.currentQuote.price,
+                                  stockData.symbol
+                                );
+                                
+                                // Extended analysis'i kaydet
+                                setExtendedAnalysis(prev => {
+                                  const newMap = new Map(prev);
+                                  newMap.set(stockData.symbol, extMorning);
+                                  return newMap;
+                                });
+
+                                results.push(result);
               } catch (calcError) {
                 console.error(`Hesaplama hatasi (${stockData.symbol}):`, calcError);
               }
@@ -659,6 +692,10 @@ export function EliteScanner() {
                         <TabsTrigger value="technicals" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
                           <LineChart className="h-4 w-4 mr-2" />
                           Teknik
+                        </TabsTrigger>
+                        <TabsTrigger value="morning" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Sabah Analizi
                         </TabsTrigger>
                       </TabsList>
 
@@ -1312,6 +1349,317 @@ export function EliteScanner() {
                             </div>
                           </div>
                         </div>
+                      </TabsContent>
+
+                      {/* Morning Analysis Tab - GELISMIS SABAH ANALIZI */}
+                      <TabsContent value="morning" className="p-6 space-y-6">
+                        {extendedAnalysis.has(selectedResult.symbol) ? (
+                          <>
+                            {/* AI Tahmin Ozeti */}
+                            <div className={`p-4 rounded-xl border ${
+                              extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation === 'STRONG_BUY_MORNING'
+                                ? 'bg-primary/15 border-primary/40'
+                                : extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation === 'BUY_MORNING'
+                                ? 'bg-chart-2/15 border-chart-2/40'
+                                : extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation === 'AVOID_MORNING' || 
+                                  extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation === 'SHORT_MORNING'
+                                ? 'bg-destructive/15 border-destructive/40'
+                                : 'bg-chart-4/15 border-chart-4/40'
+                            }`}>
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                  <Sparkles className="h-5 w-5 text-primary" />
+                                  AI Sabah Tahmini
+                                </h4>
+                                <Badge variant="outline" className={`text-sm font-bold px-3 py-1 ${
+                                  extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation === 'STRONG_BUY_MORNING'
+                                    ? 'bg-primary/20 text-primary border-primary/40'
+                                    : extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation === 'BUY_MORNING'
+                                    ? 'bg-chart-2/20 text-chart-2 border-chart-2/40'
+                                    : 'bg-chart-4/20 text-chart-4 border-chart-4/40'
+                                }`}>
+                                  {extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.recommendation.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="p-3 rounded-lg bg-background/50 border border-border">
+                                  <div className="text-xs text-muted-foreground mb-1">Yarin Yesil Olasiligi</div>
+                                  <div className={`text-2xl font-bold ${
+                                    extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.tomorrowGreenProbability >= 65 
+                                      ? 'text-primary' 
+                                      : extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.tomorrowGreenProbability <= 35
+                                      ? 'text-destructive'
+                                      : 'text-chart-4'
+                                  }`}>
+                                    %{extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.tomorrowGreenProbability}
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-lg bg-background/50 border border-border">
+                                  <div className="text-xs text-muted-foreground mb-1">Beklenen Gap</div>
+                                  <div className={`text-2xl font-bold ${
+                                    extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.tomorrowExpectedGap > 0 
+                                      ? 'text-primary' 
+                                      : 'text-destructive'
+                                  }`}>
+                                    {extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.tomorrowExpectedGap > 0 ? '+' : ''}
+                                    {extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.tomorrowExpectedGap}%
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-lg bg-background/50 border border-border">
+                                  <div className="text-xs text-muted-foreground mb-1">Tahmin Guveni</div>
+                                  <div className="text-2xl font-bold text-foreground">
+                                    %{extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.confidence}
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-lg bg-background/50 border border-border">
+                                  <div className="text-xs text-muted-foreground mb-1">Risk Seviyesi</div>
+                                  <Badge variant="outline" className={`text-sm ${
+                                    extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.riskLevel === 'low'
+                                      ? 'bg-primary/20 text-primary'
+                                      : extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.riskLevel === 'medium'
+                                      ? 'bg-chart-4/20 text-chart-4'
+                                      : 'bg-destructive/20 text-destructive'
+                                  }`}>
+                                    {extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.riskLevel.toUpperCase()}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {/* AI Faktorler */}
+                              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {extendedAnalysis.get(selectedResult.symbol)!.aiPrediction.factors.map((factor, idx) => (
+                                  <div key={idx} className={`p-2 rounded-lg text-xs flex items-center justify-between ${
+                                    factor.impact === 'positive' ? 'bg-primary/10 text-primary' :
+                                    factor.impact === 'negative' ? 'bg-destructive/10 text-destructive' :
+                                    'bg-muted text-muted-foreground'
+                                  }`}>
+                                    <span>{factor.name}</span>
+                                    <span className="font-semibold">
+                                      {factor.impact === 'positive' ? '+' : factor.impact === 'negative' ? '-' : '~'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Hot Streak Bilgisi */}
+                            {extendedAnalysis.get(selectedResult.symbol)!.hotStreak.active && (
+                              <div className="p-4 rounded-xl bg-amber-500/15 border border-amber-500/40">
+                                <div className="flex items-center gap-3 mb-4">
+                                  <div className="p-2 rounded-lg bg-amber-500/20">
+                                    <Zap className="h-5 w-5 text-amber-500" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-amber-500">HOT STREAK AKTIF!</h4>
+                                    <p className="text-xs text-muted-foreground">Bu hisse ust uste yesil sabah yapiyor</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Mevcut Streak</div>
+                                    <div className="text-2xl font-bold text-amber-500">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.hotStreak.currentStreak} Gun
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Streak Gucu</div>
+                                    <div className="text-2xl font-bold text-foreground">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.hotStreak.streakStrength}/100
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Ort. Gunluk Kazanc</div>
+                                    <div className="text-2xl font-bold text-primary">
+                                      +{extendedAnalysis.get(selectedResult.symbol)!.hotStreak.avgStreakGain}%
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Max Streak (30g)</div>
+                                    <div className="text-2xl font-bold text-foreground">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.hotStreak.maxStreakLast30d} Gun
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 17:45 Analizi */}
+                            <div className="p-4 rounded-xl bg-card border border-border">
+                              <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                                <Clock className="h-5 w-5 text-chart-2" />
+                                17:45 Sonrasi Guvenilirlik Analizi
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+                                  <div className="text-xs text-muted-foreground mb-1">Yesil Kapanistan Sonra</div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg font-bold text-primary">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.greenCloseToGreenMorning}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">sabah yesil</span>
+                                    <span className="text-lg font-bold text-destructive">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.greenCloseToRedMorning}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">sabah kirmizi</span>
+                                  </div>
+                                  <Progress 
+                                    value={extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.greenCloseReliability} 
+                                    className="h-2 mt-2" 
+                                  />
+                                  <div className="text-xs text-center mt-1 text-primary font-semibold">
+                                    %{extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.greenCloseReliability} Guvenilirlik
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                                  <div className="text-xs text-muted-foreground mb-1">Kirmizi Kapanistan Sonra</div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg font-bold text-primary">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.redCloseToGreenMorning}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">sabah yesil</span>
+                                    <span className="text-lg font-bold text-destructive">
+                                      {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.redCloseToRedMorning}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">sabah kirmizi</span>
+                                  </div>
+                                  <Progress 
+                                    value={extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.redCloseReliability} 
+                                    className="h-2 mt-2" 
+                                  />
+                                  <div className="text-xs text-center mt-1 text-chart-4 font-semibold">
+                                    %{extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.redCloseReliability} Guvenilirlik
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Bugunun Tahmini */}
+                              <div className={`p-3 rounded-lg ${
+                                extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.todayPrediction.closedGreen
+                                  ? 'bg-primary/10 border border-primary/30'
+                                  : 'bg-destructive/10 border border-destructive/30'
+                              }`}>
+                                <div className="text-sm font-medium mb-2">
+                                  Bugun {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.todayPrediction.closedGreen ? 'YESIL' : 'KIRMIZI'} kapandi
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div>
+                                    <span className="text-xs text-muted-foreground">Yarin Yesil: </span>
+                                    <span className="font-bold text-primary">
+                                      %{extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.todayPrediction.tomorrowGreenProbability}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-xs text-muted-foreground">Beklenen Gap: </span>
+                                    <span className={`font-bold ${
+                                      extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.todayPrediction.tomorrowExpectedGap > 0
+                                        ? 'text-primary'
+                                        : 'text-destructive'
+                                    }`}>
+                                      {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.todayPrediction.tomorrowExpectedGap > 0 ? '+' : ''}
+                                      {extendedAnalysis.get(selectedResult.symbol)!.afternoonAnalysis.todayPrediction.tomorrowExpectedGap}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Gap Follow-Through Analizi */}
+                            <div className="p-4 rounded-xl bg-card border border-border">
+                              <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                Gap Follow-Through Analizi
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div>
+                                  <div className="text-xs text-muted-foreground">Gap Up Devam</div>
+                                  <div className="text-xl font-bold text-primary">
+                                    %{extendedAnalysis.get(selectedResult.symbol)!.gapFollowThrough.gapUpFollowThroughRate}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-muted-foreground">Gap Down Devam</div>
+                                  <div className="text-xl font-bold text-destructive">
+                                    %{extendedAnalysis.get(selectedResult.symbol)!.gapFollowThrough.gapDownFollowThroughRate}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-muted-foreground">Ort. Gap Up Kazanc</div>
+                                  <div className="text-xl font-bold text-primary">
+                                    +{extendedAnalysis.get(selectedResult.symbol)!.gapFollowThrough.avgGapUpContinuation}%
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-muted-foreground">Gap Pattern</div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {extendedAnalysis.get(selectedResult.symbol)!.gapFollowThrough.gapPattern.replace(/_/g, ' ')}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {/* Son 10 Gap */}
+                              <div className="space-y-1">
+                                <div className="text-xs text-muted-foreground mb-2">Son 10 Gap Gecmisi:</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {extendedAnalysis.get(selectedResult.symbol)!.gapFollowThrough.last10Gaps.map((gap, idx) => (
+                                    <div key={idx} className={`px-2 py-1 rounded text-xs ${
+                                      gap.followThrough 
+                                        ? 'bg-primary/20 text-primary' 
+                                        : 'bg-destructive/20 text-destructive'
+                                    }`}>
+                                      {gap.gapPercent > 0 ? '+' : ''}{gap.gapPercent}%
+                                      {gap.followThrough ? ' (devam)' : ' (ters)'}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Zaman Bazli Analiz */}
+                            <div className="p-4 rounded-xl bg-card border border-border">
+                              <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                                <Timer className="h-5 w-5 text-chart-4" />
+                                Optimal Giris Zamani
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+                                  <div className="text-xs text-muted-foreground mb-1">En Iyi Giris Zamani</div>
+                                  <div className="text-2xl font-bold text-primary">
+                                    {extendedAnalysis.get(selectedResult.symbol)!.timingAnalysis.optimalEntryTime}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {extendedAnalysis.get(selectedResult.symbol)!.timingAnalysis.optimalEntryReasoning}
+                                  </div>
+                                </div>
+                                <div className="p-3 rounded-lg bg-card border border-border">
+                                  <div className="text-xs text-muted-foreground mb-1">Ilk 30 Dakika</div>
+                                  <div className="flex items-center gap-3">
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Ort. Hareket: </span>
+                                      <span className="font-bold text-foreground">
+                                        {extendedAnalysis.get(selectedResult.symbol)!.timingAnalysis.first30MinStats.avgMove}%
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Yukari: </span>
+                                      <span className="font-bold text-primary">
+                                        %{extendedAnalysis.get(selectedResult.symbol)!.timingAnalysis.first30MinStats.upProbability}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="p-8 text-center">
+                            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                              <Sparkles className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <p className="text-muted-foreground">Sabah analizi verisi bekleniyor...</p>
+                            <p className="text-xs text-muted-foreground mt-2">Tarama tamamlandiktan sonra detayli sabah analizi goruntulenecektir.</p>
+                          </div>
+                        )}
                       </TabsContent>
                     </Tabs>
                   </CardContent>
