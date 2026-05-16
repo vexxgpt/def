@@ -74,6 +74,9 @@ export async function GET(request: Request) {
       bars,
       currentQuote: {
         price: quote.regularMarketPrice || bars[bars.length - 1]?.close || 0,
+        open: quote.regularMarketOpen || bars[bars.length - 1]?.open || 0,
+        high: quote.regularMarketDayHigh || bars[bars.length - 1]?.high || 0,
+        low: quote.regularMarketDayLow || bars[bars.length - 1]?.low || 0,
         previousClose: quote.regularMarketPreviousClose || 0,
         change: quote.regularMarketChange || 0,
         changePercent: quote.regularMarketChangePercent || 0,
