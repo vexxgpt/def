@@ -2040,6 +2040,7 @@ export function EliteScanner() {
                 </Card>
               </div>
             )}
+            </div>
           </div>
         )}
 
