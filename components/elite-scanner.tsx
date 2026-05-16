@@ -2041,7 +2041,6 @@ export function EliteScanner() {
               </div>
             )}
           </div>
-        )}
 
         {/* Empty State */}
         {!scanning && topResults.length === 0 && !scanComplete && (
